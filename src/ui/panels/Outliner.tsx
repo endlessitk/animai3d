@@ -97,7 +97,7 @@ export type OutlinerProps = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange, onAddObjectOpen }) => {
-  const { state, setSelected, toggleSelected } = useStudioState();
+  const { state, setSelected, toggleSelected, removeFromSelection } = useStudioState();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -197,7 +197,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange, onAddO
         e.preventDefault();
         if (curRow) {
           onSceneChange(`Delete: ${curRow.obj.name}`, (s) => deleteObject(s, curRow.obj.id));
-          setSelected(null);
+          removeFromSelection(curRow.obj.id);
           setFocusedIndex(null);
         }
         break;
@@ -488,7 +488,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange, onAddO
             className="context-menu__item context-menu__item--danger"
             onClick={() => {
               onSceneChange(`Delete: ${ctxObj.name}`, (s) => deleteObject(s, ctxObj.id));
-              setSelected(null);
+              removeFromSelection(ctxObj.id);
               setContextMenu(null);
             }}
           >Delete</button>

@@ -57,6 +57,12 @@ export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // When typing in a text input, only allow Escape + F12 — leave browser
+      // native combos (Ctrl+Z/A/C/V) and printable keys alone.
+      if (isTextInput(event.target) && event.key !== "Escape" && event.key !== "F12") {
+        return;
+      }
+
       // Ctrl/Cmd combos
       if ((event.ctrlKey || event.metaKey) && !event.altKey) {
         const key = event.key.toLowerCase();
@@ -116,8 +122,7 @@ export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
         }
       }
 
-      // Tool palette — suppress inside inputs and modifier combos
-      if (isTextInput(event.target)) return;
+      // Tool palette — suppress modifier combos (text-input gate handled at top)
       if (event.ctrlKey || event.metaKey || event.altKey) return;
 
       // Shift+A → Add Object

@@ -211,6 +211,7 @@ type Action =
   | { type: "set-command-palette"; open: boolean }
   | { type: "set-selected"; id: string | null }
   | { type: "toggle-selected"; id: string }
+  | { type: "remove-from-selection"; id: string }
   | { type: "set-fps-hint"; fps: number };
 
 const reducer = (state: StudioState, action: Action): StudioState => {
@@ -273,6 +274,18 @@ const reducer = (state: StudioState, action: Action): StudioState => {
         selectedIds: next,
       };
     }
+    case "remove-from-selection": {
+      if (!state.selectedIds.includes(action.id)) return state;
+      const next = state.selectedIds.filter((i) => i !== action.id);
+      return {
+        ...state,
+        selectedId:
+          state.selectedId === action.id
+            ? (next[next.length - 1] ?? null)
+            : state.selectedId,
+        selectedIds: next,
+      };
+    }
     case "set-fps-hint":
       return state.fpsHint === action.fps ? state : { ...state, fpsHint: action.fps };
   }
@@ -299,6 +312,7 @@ type StudioContextValue = {
   setCommandPalette: (open: boolean) => void;
   setSelected: (id: string | null) => void;
   toggleSelected: (id: string) => void;
+  removeFromSelection: (id: string) => void;
   setFpsHint: (fps: number) => void;
 };
 
@@ -327,6 +341,7 @@ export const StudioStateProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setCommandPalette: (open) => dispatch({ type: "set-command-palette", open }),
       setSelected: (id) => dispatch({ type: "set-selected", id }),
       toggleSelected: (id) => dispatch({ type: "toggle-selected", id }),
+      removeFromSelection: (id) => dispatch({ type: "remove-from-selection", id }),
       setFpsHint: (fps) => dispatch({ type: "set-fps-hint", fps }),
     }),
     [state],

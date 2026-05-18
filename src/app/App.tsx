@@ -6,7 +6,7 @@ import type { Scene3D, StudioProject } from "../scene/schema";
 import type { Transaction } from "../state/transactions";
 import { createTransaction, resetTransactionCounter } from "../state/transactions";
 import { useUndoableScene } from "../state/useUndoable";
-import { downloadJson, loadJson, saveJson } from "../storage/localStore";
+import { downloadJson, loadJson, saveJson, saveJsonDebounced } from "../storage/localStore";
 import "./styles.css";
 
 export const App: React.FC = () => {
@@ -16,7 +16,7 @@ export const App: React.FC = () => {
   const [initialScene] = useState<Scene3D>(() => loadJson("scene3d", defaultScene3D));
   const { scene, commit, undo, redo, canUndo, canRedo, reset } = useUndoableScene(initialScene);
 
-  useEffect(() => saveJson("scene3d", scene), [scene]);
+  useEffect(() => saveJsonDebounced("scene3d", scene), [scene]);
   useEffect(() => saveJson("project", project), [project]);
 
   const onSceneChange = useCallback(
