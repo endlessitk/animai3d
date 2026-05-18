@@ -1,0 +1,147 @@
+{
+  "id": "scene-main-3d",
+  "name": "Main Scene",
+  "background": "#1f1f1f",
+  "environment": null,
+  "objects": [
+    {
+      "id": "go-camera-main",
+      "name": "Main Camera",
+      "visible": true,
+      "locked": false,
+      "components": [
+        {
+          "type": "transform",
+          "transform": {
+            "position": [4, 3, 6],
+            "rotation": [-0.4, 0.6, 0],
+            "scale": [1, 1, 1]
+          }
+        },
+        {
+          "type": "camera",
+          "kind": "perspective",
+          "fov": 45,
+          "near": 0.1,
+          "far": 200,
+          "active": true
+        }
+      ]
+    },
+    {
+      "id": "go-light-key",
+      "name": "Key Light",
+      "visible": true,
+      "locked": false,
+      "components": [
+        {
+          "type": "transform",
+          "transform": {
+            "position": [5, 8, 5],
+            "rotation": [0, 0, 0],
+            "scale": [1, 1, 1]
+          }
+        },
+        {
+          "type": "light",
+          "kind": "directional",
+          "color": "#ffffff",
+          "intensity": 1.2,
+          "castShadow": false
+        }
+      ]
+    },
+    {
+      "id": "go-light-ambient",
+      "name": "Ambient Fill",
+      "visible": true,
+      "locked": false,
+      "components": [
+        {
+          "type": "transform",
+          "transform": {
+            "position": [0, 0, 0],
+            "rotation": [0, 0, 0],
+            "scale": [1, 1, 1]
+          }
+        },
+        {
+          "type": "light",
+          "kind": "ambient",
+          "color": "#ffffff",
+          "intensity": 0.35
+        }
+      ]
+    },
+    {
+      "id": "go-cube-primary",
+      "name": "Cube",
+      "visible": true,
+      "locked": false,
+      "components": [
+        {
+          "type": "transform",
+          "transform": {
+            "position": [0, 0.5, 0],
+            "rotation": [0, 0, 0],
+            "scale": [1, 1, 1]
+          }
+        },
+        {
+          "type": "mesh",
+          "primitive": {
+            "kind": "box",
+            "size": [1, 1, 1]
+          }
+        },
+        {
+          "type": "material",
+          "material": {
+            "kind": "standard",
+            "color": "#a78bfa",
+            "metalness": 0.1,
+            "roughness": 0.6
+          }
+        },
+        {
+          "type": "tag",
+          "labels": []
+        }
+      ]
+    },
+    {
+      "id": "go-ground-plane",
+      "name": "Ground",
+      "visible": true,
+      "locked": true,
+      "components": [
+        {
+          "type": "transform",
+          "transform": {
+            "position": [0, 0, 0],
+            "rotation": [-1.5707963, 0, 0],
+            "scale": [1, 1, 1]
+          }
+        },
+        {
+          "type": "mesh",
+          "primitive": {
+            "kind": "plane",
+            "width": 20,
+            "height": 20
+          },
+          "receiveShadow": true
+        },
+        {
+          "type": "material",
+          "material": {
+            "kind": "standard",
+            "color": "#2b2b2b",
+            "metalness": 0.0,
+            "roughness": 1.0
+          }
+        }
+      ]
+    }
+  ]
+}

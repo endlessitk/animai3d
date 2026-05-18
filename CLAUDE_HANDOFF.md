@@ -1,6 +1,6 @@
 # agentic-3d-studio — Handoff
 
-> **Status:** Sprint 0 complete (2026-05-18). Project pivoted from 2D animation studio → **AI-native 3D DCC** and extracted from the whale-spot monorepo into its own standalone repo.
+> **Status:** Sprint 1 complete (2026-05-18). Three.js + R3F + drei wired; GameObject + Component schema live; primitive 3D scene renders with save/load roundtrip. Remotion isolated under `src/exporters/remotion-adapter/`.
 
 ## Current Goal
 
@@ -52,48 +52,49 @@ C:\Projects\agentic-3d-studio\
 ├── DESIGN_LANGUAGE.md                  # Canonical design spec (v2 — 2026-05-18)
 ├── CLAUDE_HANDOFF.md                   # this file
 ├── package.json                        # standalone, version 0.2.0
-├── pnpm-lock.yaml                      # standalone lockfile
-├── .npmrc                              # local pnpm config
+├── pnpm-lock.yaml
+├── .npmrc
 ├── .claude/launch.json
 ├── index.html
 ├── vite.config.ts
 ├── tsconfig.json
-├── remotion.config.ts                  # LEGACY — kept for optional video export
-├── docs/
-│   └── plans/
-│       └── 2026-05-18-agentic-3d-studio-design.md
-├── scripts/
-│   └── create-agent-task.mjs
+├── remotion.config.ts                  # LEGACY (optional video export)
+├── docs/plans/2026-05-18-agentic-3d-studio-design.md
+├── scripts/create-agent-task.mjs
 ├── src/
 │   ├── main.tsx
 │   ├── app/
-│   │   ├── App.tsx                     # 2D shell — TO BE REWRITTEN in Sprint 2
-│   │   └── styles.css                  # OLD tokens — TO BE REWRITTEN in Sprint 2
-│   ├── assets/
-│   ├── editor/                         # empty placeholder
-│   ├── remotion/                       # LEGACY — Sprint 1 will move to src/exporters/remotion-adapter/
-│   │   ├── index.ts
-│   │   └── Root.tsx
+│   │   ├── App.tsx                     # Sprint 1: minimal 3D shell (R3F Canvas + transport)
+│   │   └── styles.css                  # Sprint 1: §2 token subset
 │   ├── scene/
-│   │   ├── SceneRenderer.tsx           # 2D SVG renderer — Sprint 1 replace with R3F
-│   │   ├── defaultData.ts
-│   │   ├── interpolate.ts              # 2D — Sprint 1 expand to 3D
-│   │   └── schema.ts                   # 2D — Sprint 1 add GameObject + Component
-│   ├── storage/
-│   │   └── localStore.ts               # PREFIX updated to "agentic-3d-studio:"
-│   └── tasks/
-│       └── createAgentTask.ts
+│   │   ├── schema.ts                   # 2D types (legacy) + 3D GameObject + Component (Sprint 1)
+│   │   ├── defaultData.ts              # LEGACY 2D defaults (consumed by remotion-adapter)
+│   │   ├── defaultData3d.ts            # 3D defaults — main path
+│   │   ├── SceneRenderer.tsx           # LEGACY 2D SVG renderer (unused by main path)
+│   │   └── SceneRenderer3D.tsx         # R3F Canvas + GameObject traversal
+│   ├── engine/
+│   │   ├── core/                       # 2D evaluation (LEGACY — used by remotion-adapter)
+│   │   ├── renderers/                  # LiveSvgRenderer + RemotionSceneRenderer (LEGACY)
+│   │   ├── runtime/
+│   │   │   ├── TimeController.ts       # engine-agnostic frame math
+│   │   │   ├── PlaybackController.ts   # engine-agnostic playback + rAF loop
+│   │   │   ├── ViewportRuntime.ts      # LEGACY 2D evaluator wrapper
+│   │   │   └── Viewport3DRuntime.ts    # 3D: PlaybackController + Scene3D passthrough
+│   │   └── systems/                    # 2D selection/transform/keyframe (LEGACY)
+│   ├── exporters/
+│   │   └── remotion-adapter/           # LEGACY video export entry
+│   │       ├── index.ts
+│   │       └── Root.tsx
+│   ├── assets/
+│   ├── storage/localStore.ts
+│   └── tasks/createAgentTask.ts
 ├── studio-data/
-│   ├── project.json                    # id + name updated
-│   ├── scene.json
-│   ├── assets.json
-│   ├── rigs.json
-│   ├── animations.json
-│   └── history.json
-├── agent-tasks/
-│   └── .gitkeep
-└── public/uploads/
-    └── .gitkeep
+│   ├── project.json
+│   ├── scene.json                      # 2D scene (LEGACY — remotion-adapter)
+│   ├── scene3d.json                    # 3D scene (main path)
+│   ├── assets.json / rigs.json / animations.json / history.json
+├── agent-tasks/.gitkeep
+└── public/uploads/.gitkeep
 ```
 
 ## Standalone Commands
@@ -113,23 +114,39 @@ pnpm legacy:remotion:render  # render to mp4
 pnpm legacy:remotion:still   # render single frame PNG
 ```
 
-## Sprint 1 — Next Up (Engine Foundation, ~2 hafta)
+## Sprint 1 Completed Work
 
-Per `docs/plans/2026-05-18-agentic-3d-studio-design.md`:
+- ✅ Installed `three@0.184`, `@react-three/fiber@9`, `@react-three/drei@10`, `@types/three`
+- ✅ Schema extended with 3D types: `Vec3`, `Transform3D`, `Component` union (transform / mesh / material / camera / light / agentMetadata / tag), `GameObject`, `Scene3D` + helpers (`getTransform`, `findComponent`, `findActiveCamera`)
+- ✅ `studio-data/scene3d.json` — primitive scene: perspective camera + directional + ambient light + box mesh + ground plane
+- ✅ `src/scene/defaultData3d.ts` — typed loader for 3D project + scene
+- ✅ `src/scene/SceneRenderer3D.tsx` — R3F `<Canvas>` with `<PerspectiveCamera>` + `<OrbitControls>` + `<Grid>`; per-GameObject `<group>` traversal mapping components → R3F primitives (mesh/light/material); active camera resolver; selection halo (wireframe orange `#ff8c3b`); `onPointerMissed` deselect
+- ✅ `src/engine/runtime/Viewport3DRuntime.ts` — wraps `PlaybackController` for frame transport; skips legacy 2D `evaluateScene` (3D keyframe eval lands in Sprint 5)
+- ✅ `src/exporters/remotion-adapter/{index.ts,Root.tsx}` — Remotion moved out of main path; `package.json` `legacy:remotion:*` scripts repointed
+- ✅ `src/app/App.tsx` rewritten — minimal 3D shell (CSS Grid topbar / outliner / viewport+transport / inspector / status bar) using DESIGN_LANGUAGE.md tokens (dark grays, no radius, no shadows, Inter); placeholder for Sprint 2 chrome rewrite
+- ✅ `src/app/styles.css` rewritten — §2 token subset (`--c-window` `#1f1f1f`, `--c-panel` `#2b2b2b`, accents only on selection orange + agent purple + axis blue scrubber)
+- ✅ `pnpm typecheck` clean
+- ✅ `pnpm build` clean (606 modules, 1.07 MB JS — code-splitting deferred to Sprint 7)
+- ✅ `pnpm dev` boots in ~220ms
 
-1. Install Three.js + R3F + drei + postprocessing deps.
-2. Refactor `src/scene/schema.ts`: `Transform2D → Transform3D`; introduce `GameObject + Component[]` model.
-3. Replace `src/scene/SceneRenderer.tsx` with `src/scene/SceneRenderer3D.tsx` using R3F `<Canvas>` + Object3D traversal.
-4. Move `src/remotion/` → `src/exporters/remotion-adapter/` (legacy isolation).
-5. Adapt `PlaybackController` / `TimeController` / `ViewportRuntime` for 3D frame evaluation.
-6. Render a single primitive cube + directional light + perspective camera; verify save/load roundtrip with `studio-data/scene.json`.
-7. `pnpm typecheck` + `pnpm build` clean.
+**Save/load roundtrip:** App seeds from `defaultScene3D`, mutates persist to `localStorage["agentic-3d-studio:scene3d"]`, "Reset" button restores the seed. Verified manually via `loadJson` / `saveJson` wiring in `App.tsx:21,23-24`.
 
-## Sprint 2-7 Roadmap
+## Sprint 2 — Next Up (Chrome Layer Rewrite, ~2 hafta)
+
+Per `DESIGN_LANGUAGE.md` §1 (layout grid) + §3 (top chrome) + §9 (status bar):
+
+1. Full CSS Grid shell with zone heights: 28 chrome / 30 workspace / 36 toolbar / 30 sub-toolbar / 1fr viewport+timeline / 240 content browser (collapsible) / 22 status. Sağ panel adaptive 300-520px.
+2. Workspace switcher tabs (sol-aligned text): Model / Animate / Rig / Material / Simulate / Render / Script / Agent / Layout… with `Ctrl+1..7` hotkeys.
+3. Main toolbar (Q/W/E/R/T/Y tool palette + Transform Reference dropdown + Pivot dropdown — separated per Modo Action Center DNA).
+4. Sub-toolbar (workspace-contextual; per-workspace tool params).
+5. Status bar (left: scene stats + selection · center: validation badge · right: agent state + provider config).
+6. `F12` Agent Workbench toggle stub (panel mount point, content lands Sprint 6).
+7. Outliner with C4D-style inline tag strip (Sprint 3 full Inspector; Sprint 2 just the row layout + tag chip primitives).
+
+## Sprint 3-7 Roadmap
 
 | Sprint | Scope | Estimate |
 |---|---|---|
-| 2 | Chrome layer rewrite (CSS Grid + tokens + Workspace/Toolbar/SubToolbar/Tool Palette/Status Bar) | 2 hafta |
 | 3 | Outliner + Inspector Component Stack + Add Component flow + multi-edit + grouped transactions | 2 hafta |
 | 4 | Viewport tools: gizmo (Move/Rotate/Scale/Universal) + Transform Reference × Pivot + shading modes + halo selection + snap + 3D cursor + hotkey + gesture | 2 hafta |
 | 5 | Time editor (Timeline/Dopesheet/Curves tek-sekme swap) + transport + Range slider + Content Browser + Validation panel | 2 hafta |

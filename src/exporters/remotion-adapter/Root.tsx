@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Composition } from "remotion";
-import { defaultAssets, defaultProject, defaultScene } from "../scene/defaultData";
-import { RemotionSceneRenderer } from "../engine/renderers/RemotionSceneRenderer";
+import { defaultAssets, defaultProject, defaultScene } from "../../scene/defaultData";
+import { RemotionSceneRenderer } from "../../engine/renderers/RemotionSceneRenderer";
 
 const AI2DStudioComposition: React.FC = () => (
   <AbsoluteFill style={{ background: defaultScene.background }}>
