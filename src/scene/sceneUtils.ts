@@ -109,6 +109,13 @@ export const setVec3Field = (
     transform: { ...c.transform, [field]: value },
   }));
 
+export const setObjectTransform = (
+  scene: Scene3D,
+  id: string,
+  transform: import("./schema").Transform3D,
+): Scene3D =>
+  mapComp(scene, id, "transform", (c) => ({ ...c, transform }));
+
 // ── Private helpers ──────────────────────────────────────────────────────────
 
 const mapObj = (

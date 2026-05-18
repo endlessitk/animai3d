@@ -60,7 +60,7 @@ export type OutlinerProps = {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
-  const { state, setSelected } = useStudioState();
+  const { state, setSelected, toggleSelected } = useStudioState();
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -247,6 +247,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
             const overflow = tags.length - 4;
             const hasAgent = !!findComponent(obj, "agentMetadata");
             const isSelected = state.selectedId === obj.id;
+            const isMultiSelected = state.selectedIds.includes(obj.id);
             const isRenaming = renameId === obj.id;
             const isDragOver = dragOverIndex === filteredIdx;
 
@@ -256,12 +257,20 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
                 className={[
                   "outliner__row",
                   isSelected ? "is-selected" : "",
+                  !isSelected && isMultiSelected ? "is-multi-selected" : "",
                   hasAgent ? "is-agent" : "",
                   isDragOver ? "is-drag-over" : "",
                   !obj.visible ? "is-hidden" : "",
                   obj.locked ? "is-locked-row" : "",
                 ].filter(Boolean).join(" ")}
-                onClick={() => { setSelected(obj.id); setFocusedIndex(filteredIdx); }}
+                onClick={(e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    toggleSelected(obj.id);
+                  } else {
+                    setSelected(obj.id);
+                  }
+                  setFocusedIndex(filteredIdx);
+                }}
                 onDoubleClick={() => startRename(obj)}
                 onContextMenu={(e) => handleRightClick(e, obj)}
                 draggable={!isRenaming}

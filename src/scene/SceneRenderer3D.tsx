@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Grid, OrbitControls, PerspectiveCamera } from "@react-three/drei";
+import { Grid, OrbitControls, PerspectiveCamera, TransformControls } from "@react-three/drei";
+import * as THREE from "three";
 import {
   findComponent,
   type CameraComponent,
@@ -13,10 +14,15 @@ import {
   type MeshPrimitive,
   type Scene3D,
   type Transform3D,
+  type Vec3,
   IDENTITY_TRANSFORM_3D,
 } from "./schema";
 
-// ── Component → R3F element renderers ───────────────────────────────────────
+// ── Gizmo mode ────────────────────────────────────────────────────────────────
+
+export type GizmoMode = "translate" | "rotate" | "scale";
+
+// ── Component → R3F geometry/material/light ──────────────────────────────────
 
 const renderGeometry = (primitive: MeshPrimitive): React.ReactElement => {
   switch (primitive.kind) {
@@ -25,11 +31,7 @@ const renderGeometry = (primitive: MeshPrimitive): React.ReactElement => {
     case "sphere":
       return (
         <sphereGeometry
-          args={[
-            primitive.radius,
-            primitive.widthSegments ?? 32,
-            primitive.heightSegments ?? 16,
-          ]}
+          args={[primitive.radius, primitive.widthSegments ?? 32, primitive.heightSegments ?? 16]}
         />
       );
     case "cylinder":
@@ -125,30 +127,47 @@ const renderLight = (light: LightComponent): React.ReactElement | null => {
   }
 };
 
-// ── GameObject renderer ─────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 const transformOf = (components: Component[]): Transform3D => {
   const t = components.find((c) => c.type === "transform");
   return t && t.type === "transform" ? t.transform : IDENTITY_TRANSFORM_3D;
 };
 
+// ── GameObject renderer ───────────────────────────────────────────────────────
+
 type GameObjectNodeProps = {
   object: GameObject;
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  isSelected: boolean;
+  isMultiSelected: boolean;
+  onSelect: (id: string, addToSelection: boolean) => void;
+  onRegisterGroup: (id: string, group: THREE.Group | null) => void;
 };
 
-const GameObjectNode: React.FC<GameObjectNodeProps> = ({ object, selectedId, onSelect }) => {
+const GameObjectNode: React.FC<GameObjectNodeProps> = ({
+  object,
+  isSelected,
+  isMultiSelected,
+  onSelect,
+  onRegisterGroup,
+}) => {
   if (!object.visible) return null;
 
   const transform = transformOf(object.components);
   const mesh = findComponent(object, "mesh") as MeshComponent | undefined;
   const material = findComponent(object, "material") as MaterialComponent | undefined;
   const light = findComponent(object, "light") as LightComponent | undefined;
-  const isSelected = selectedId === object.id;
+
+  const refCallback = useCallback(
+    (group: THREE.Group | null) => {
+      onRegisterGroup(object.id, group);
+    },
+    [object.id, onRegisterGroup],
+  );
 
   return (
     <group
+      ref={refCallback}
       position={transform.position}
       rotation={transform.rotation}
       scale={transform.scale}
@@ -159,9 +178,9 @@ const GameObjectNode: React.FC<GameObjectNodeProps> = ({ object, selectedId, onS
         <mesh
           castShadow={mesh.castShadow ?? false}
           receiveShadow={mesh.receiveShadow ?? false}
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelect(object.id);
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(object.id, e.ctrlKey || e.metaKey);
           }}
         >
           {renderGeometry(mesh.primitive)}
@@ -171,21 +190,24 @@ const GameObjectNode: React.FC<GameObjectNodeProps> = ({ object, selectedId, onS
         </mesh>
       )}
       {light && renderLight(light)}
-      {isSelected && mesh && <SelectionHalo primitive={mesh.primitive} />}
+      {/* Selection halo — orange for primary, dim for multi */}
+      {isSelected && mesh && (
+        <mesh scale={[1.02, 1.02, 1.02]}>
+          {renderGeometry(mesh.primitive)}
+          <meshBasicMaterial color="#ff8c3b" wireframe />
+        </mesh>
+      )}
+      {!isSelected && isMultiSelected && mesh && (
+        <mesh scale={[1.015, 1.015, 1.015]}>
+          {renderGeometry(mesh.primitive)}
+          <meshBasicMaterial color="#ffb84a" wireframe opacity={0.6} transparent />
+        </mesh>
+      )}
     </group>
   );
 };
 
-// ── Selection halo (Sprint 1 minimal: bbox wireframe in selection orange) ──
-
-const SelectionHalo: React.FC<{ primitive: MeshPrimitive }> = ({ primitive }) => (
-  <mesh scale={[1.02, 1.02, 1.02]}>
-    {renderGeometry(primitive)}
-    <meshBasicMaterial color="#ff8c3b" wireframe />
-  </mesh>
-);
-
-// ── Active camera resolver ──────────────────────────────────────────────────
+// ── Active camera resolver ────────────────────────────────────────────────────
 
 type ResolvedCamera = {
   position: [number, number, number];
@@ -211,37 +233,63 @@ const resolveActiveCamera = (scene: Scene3D): ResolvedCamera => {
   };
 };
 
-// ── Public component ────────────────────────────────────────────────────────
+// ── Inner canvas scene ────────────────────────────────────────────────────────
 
-export type SceneRenderer3DProps = {
+type SceneContentProps = {
   scene: Scene3D;
   selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  /** Show editor helpers (grid, axes). Hidden in render mode. */
-  showHelpers?: boolean;
+  selectedIds: string[];
+  gizmoMode: GizmoMode | undefined;
+  onSelect: (id: string | null, addToSelection?: boolean) => void;
+  onTransformCommit: (id: string, transform: Transform3D) => void;
+  showHelpers: boolean;
 };
 
-export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
+const SceneContent: React.FC<SceneContentProps> = ({
   scene,
   selectedId,
+  selectedIds,
+  gizmoMode,
   onSelect,
-  showHelpers = true,
+  onTransformCommit,
+  showHelpers,
 }) => {
-  const activeCamera = useMemo(() => resolveActiveCamera(scene), [scene]);
-
-  // GameObjects to render in the scene (cameras handled separately).
-  const renderableObjects = useMemo(
-    () => scene.objects.filter((o) => !findComponent(o, "camera")),
-    [scene.objects],
+  const groupRegistry = useRef<Map<string, THREE.Group>>(new Map());
+  const [tcTarget, setTcTarget] = useState<THREE.Group | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const registerGroup = useCallback(
+    (id: string, group: THREE.Group | null) => {
+      if (group) {
+        groupRegistry.current.set(id, group);
+        if (id === selectedId) setTcTarget(group);
+      } else {
+        groupRegistry.current.delete(id);
+        if (id === selectedId) setTcTarget(null);
+      }
+    },
+    [selectedId],
   );
 
+  // When selectedId changes, look up the already-registered group
+  useEffect(() => {
+    setTcTarget(selectedId ? groupRegistry.current.get(selectedId) ?? null : null);
+  }, [selectedId]);
+
+  const activeCamera = resolveActiveCamera(scene);
+  const renderableObjects = scene.objects.filter((o) => !findComponent(o, "camera"));
+
+  const handleTransformMouseUp = () => {
+    setIsDragging(false);
+    if (!tcTarget || !selectedId) return;
+    onTransformCommit(selectedId, {
+      position: tcTarget.position.toArray() as Vec3,
+      rotation: [tcTarget.rotation.x, tcTarget.rotation.y, tcTarget.rotation.z] as Vec3,
+      scale: tcTarget.scale.toArray() as Vec3,
+    });
+  };
+
   return (
-    <Canvas
-      gl={{ antialias: true, preserveDrawingBuffer: false }}
-      dpr={[1, 2]}
-      style={{ background: scene.background, width: "100%", height: "100%" }}
-      onPointerMissed={() => onSelect(null)}
-    >
+    <>
       {activeCamera ? (
         <PerspectiveCamera
           makeDefault
@@ -254,7 +302,7 @@ export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
         <PerspectiveCamera makeDefault position={[4, 3, 6]} fov={45} />
       )}
 
-      <OrbitControls makeDefault target={[0, 0.5, 0]} />
+      <OrbitControls makeDefault target={[0, 0.5, 0]} enabled={!isDragging} />
 
       {showHelpers && (
         <Grid
@@ -272,14 +320,64 @@ export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
         />
       )}
 
-      {renderableObjects.map((object) => (
+      {renderableObjects.map((obj) => (
         <GameObjectNode
-          key={object.id}
-          object={object}
-          selectedId={selectedId}
-          onSelect={onSelect}
+          key={obj.id}
+          object={obj}
+          isSelected={obj.id === selectedId}
+          isMultiSelected={selectedIds.includes(obj.id)}
+          onSelect={(id, add) => onSelect(id, add)}
+          onRegisterGroup={registerGroup}
         />
       ))}
-    </Canvas>
+
+      {tcTarget && gizmoMode && (
+        <TransformControls
+          object={tcTarget}
+          mode={gizmoMode}
+          onMouseDown={() => setIsDragging(true)}
+          onMouseUp={handleTransformMouseUp}
+        />
+      )}
+    </>
   );
 };
+
+// ── Public component ──────────────────────────────────────────────────────────
+
+export type SceneRenderer3DProps = {
+  scene: Scene3D;
+  selectedId: string | null;
+  selectedIds: string[];
+  gizmoMode: GizmoMode | undefined;
+  onSelect: (id: string | null, addToSelection?: boolean) => void;
+  onTransformCommit: (id: string, transform: Transform3D) => void;
+  showHelpers?: boolean;
+};
+
+export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
+  scene,
+  selectedId,
+  selectedIds,
+  gizmoMode,
+  onSelect,
+  onTransformCommit,
+  showHelpers = true,
+}) => (
+  <Canvas
+    gl={{ antialias: true, preserveDrawingBuffer: false }}
+    dpr={[1, 2]}
+    style={{ background: scene.background, width: "100%", height: "100%" }}
+    onPointerMissed={() => onSelect(null)}
+  >
+    <SceneContent
+      scene={scene}
+      selectedId={selectedId}
+      selectedIds={selectedIds}
+      gizmoMode={gizmoMode}
+      onSelect={onSelect}
+      onTransformCommit={onTransformCommit}
+      showHelpers={showHelpers}
+    />
+  </Canvas>
+);

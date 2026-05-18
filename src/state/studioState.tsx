@@ -164,8 +164,10 @@ export type StudioState = {
   contentBrowserOpen: boolean;
   validationDrawerOpen: boolean;
   commandPaletteOpen: boolean;
-  /** Currently selected GameObject id, or null. */
+  /** Primary selected GameObject id, or null. */
   selectedId: string | null;
+  /** All selected ids (multi-select). Always includes selectedId when non-null. */
+  selectedIds: string[];
   /** Measured FPS pushed by viewport hooks. */
   fpsHint: number;
 };
@@ -185,6 +187,7 @@ const INITIAL_STATE: StudioState = {
   validationDrawerOpen: false,
   commandPaletteOpen: false,
   selectedId: null,
+  selectedIds: [],
   fpsHint: 0,
 };
 
@@ -207,6 +210,7 @@ type Action =
   | { type: "toggle-command-palette" }
   | { type: "set-command-palette"; open: boolean }
   | { type: "set-selected"; id: string | null }
+  | { type: "toggle-selected"; id: string }
   | { type: "set-fps-hint"; fps: number };
 
 const reducer = (state: StudioState, action: Action): StudioState => {
@@ -253,7 +257,22 @@ const reducer = (state: StudioState, action: Action): StudioState => {
     case "set-command-palette":
       return { ...state, commandPaletteOpen: action.open };
     case "set-selected":
-      return { ...state, selectedId: action.id };
+      return {
+        ...state,
+        selectedId: action.id,
+        selectedIds: action.id ? [action.id] : [],
+      };
+    case "toggle-selected": {
+      const already = state.selectedIds.includes(action.id);
+      const next = already
+        ? state.selectedIds.filter((i) => i !== action.id)
+        : [...state.selectedIds, action.id];
+      return {
+        ...state,
+        selectedId: next.length > 0 ? next[next.length - 1] : null,
+        selectedIds: next,
+      };
+    }
     case "set-fps-hint":
       return state.fpsHint === action.fps ? state : { ...state, fpsHint: action.fps };
   }
@@ -279,6 +298,7 @@ type StudioContextValue = {
   toggleCommandPalette: () => void;
   setCommandPalette: (open: boolean) => void;
   setSelected: (id: string | null) => void;
+  toggleSelected: (id: string) => void;
   setFpsHint: (fps: number) => void;
 };
 
@@ -306,6 +326,7 @@ export const StudioStateProvider: React.FC<{ children: React.ReactNode }> = ({ c
       toggleCommandPalette: () => dispatch({ type: "toggle-command-palette" }),
       setCommandPalette: (open) => dispatch({ type: "set-command-palette", open }),
       setSelected: (id) => dispatch({ type: "set-selected", id }),
+      toggleSelected: (id) => dispatch({ type: "toggle-selected", id }),
       setFpsHint: (fps) => dispatch({ type: "set-fps-hint", fps }),
     }),
     [state],

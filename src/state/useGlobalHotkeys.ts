@@ -47,6 +47,8 @@ const isTextInput = (target: EventTarget | null): boolean => {
 
 export type GlobalHotkeyHandlers = {
   onPlayPause?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
 };
 
 export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
@@ -54,18 +56,34 @@ export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      // Ctrl/Cmd+number → workspace
-      if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey) {
-        const ws = WORKSPACE_HOTKEY[event.key];
-        if (ws) {
+      // Ctrl/Cmd combos
+      if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+        const key = event.key.toLowerCase();
+
+        // Ctrl+Z → undo / Ctrl+Shift+Z → redo
+        if (key === "z" && !event.shiftKey) {
           event.preventDefault();
-          studio.setWorkspace(ws);
+          handlers.onUndo?.();
           return;
         }
-        if (event.key.toLowerCase() === "p") {
+        if (key === "z" && event.shiftKey) {
           event.preventDefault();
-          studio.toggleCommandPalette();
+          handlers.onRedo?.();
           return;
+        }
+
+        if (!event.shiftKey) {
+          const ws = WORKSPACE_HOTKEY[event.key];
+          if (ws) {
+            event.preventDefault();
+            studio.setWorkspace(ws);
+            return;
+          }
+          if (key === "p") {
+            event.preventDefault();
+            studio.toggleCommandPalette();
+            return;
+          }
         }
       }
 
@@ -97,7 +115,7 @@ export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
         }
       }
 
-      // Tool palette — suppress inside inputs
+      // Tool palette — suppress inside inputs and modifier combos
       if (isTextInput(event.target)) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
       const tool = TOOL_HOTKEY[event.key.toLowerCase()];
