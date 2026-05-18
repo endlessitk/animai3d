@@ -4,7 +4,8 @@ import type { GizmoMode } from "../scene/SceneRenderer3D";
 import { useViewport3DRuntime } from "../engine/runtime/Viewport3DRuntime";
 import type { Component, Scene3D, StudioProject, Transform3D } from "../scene/schema";
 import type { Transaction } from "../state/transactions";
-import { addComponent, setObjectTransform } from "../scene/sceneUtils";
+import { addComponent, addNewObject, setObjectTransform } from "../scene/sceneUtils";
+import type { AddObjectKind } from "../scene/sceneUtils";
 import { useStudioState } from "../state/studioState";
 import type { ToolId } from "../state/studioState";
 import { useGlobalHotkeys } from "../state/useGlobalHotkeys";
@@ -17,6 +18,7 @@ import { StatusBar } from "./chrome/StatusBar";
 import { Outliner } from "./panels/Outliner";
 import { Inspector } from "./panels/Inspector";
 import { AddComponentPopup } from "./panels/AddComponentPopup";
+import { AddObjectMenu } from "./panels/AddObjectMenu";
 import { ContentBrowser } from "./panels/ContentBrowser";
 import { AgentWorkbench } from "./panels/AgentWorkbench";
 import { TransportBar } from "./timeline/TransportBar";
@@ -66,13 +68,22 @@ export const AppShell: React.FC<AppShellProps> = ({
   const frame = Math.round(runtime.state.frame);
 
   const [addComponentOpen, setAddComponentOpen] = useState(false);
+  const [addObjectOpen, setAddObjectOpen] = useState(false);
 
   const gizmoMode = toolToGizmoMode(studio.state.tool);
+
+  const handleAddObject = useCallback(
+    (kind: AddObjectKind) => {
+      onSceneChange(`Add ${kind}`, (s) => addNewObject(s, kind));
+    },
+    [onSceneChange],
+  );
 
   useGlobalHotkeys({
     onPlayPause: runtime.toggle,
     onUndo,
     onRedo,
+    onAddObject: () => setAddObjectOpen(true),
   });
 
   // Keep FPS hint in studio state for StatusBar
@@ -183,7 +194,13 @@ export const AppShell: React.FC<AppShellProps> = ({
       </div>
 
       <div className="right-panel">
-        <Outliner scene={scene} onSceneChange={onSceneChange} />
+        {addObjectOpen && (
+          <AddObjectMenu
+            onAdd={handleAddObject}
+            onClose={() => setAddObjectOpen(false)}
+          />
+        )}
+        <Outliner scene={scene} onSceneChange={onSceneChange} onAddObjectOpen={() => setAddObjectOpen(true)} />
         <div style={{ position: "relative" }}>
           <Inspector
             scene={scene}

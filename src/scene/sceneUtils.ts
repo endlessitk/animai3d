@@ -1,4 +1,4 @@
-import type { Component, ComponentType, GameObject, Scene3D, Vec3 } from "./schema";
+import type { Component, ComponentType, GameObject, Scene3D, Transform3D, Vec3 } from "./schema";
 
 // ── Object-level mutations ───────────────────────────────────────────────────
 
@@ -115,6 +115,75 @@ export const setObjectTransform = (
   transform: import("./schema").Transform3D,
 ): Scene3D =>
   mapComp(scene, id, "transform", (c) => ({ ...c, transform }));
+
+// ── Hierarchy mutations ──────────────────────────────────────────────────────
+
+export const setParent = (scene: Scene3D, childId: string, parentId: string | null): Scene3D => {
+  if (parentId !== null) {
+    let cur: string | undefined = parentId;
+    while (cur) {
+      if (cur === childId) return scene;
+      const p = scene.objects.find((o) => o.id === cur);
+      cur = p?.parentId;
+    }
+  }
+  return mapObj(scene, childId, (o) => ({ ...o, parentId: parentId ?? undefined }));
+};
+
+// ── Object factory ────────────────────────────────────────────────────────────
+
+export type AddObjectKind =
+  | "box"
+  | "sphere"
+  | "cylinder"
+  | "plane"
+  | "torus"
+  | "empty"
+  | "point-light"
+  | "directional-light"
+  | "spot-light"
+  | "ambient-light"
+  | "camera";
+
+let _objCounter = 0;
+
+function makeTransform(position: Vec3): Extract<Component, { type: "transform" }> {
+  return { type: "transform", transform: { position, rotation: [0, 0, 0], scale: [1, 1, 1] } };
+}
+
+function buildGameObject(kind: AddObjectKind, position: Vec3): GameObject {
+  const id = `go-${Date.now()}-${++_objCounter}`;
+  const t = makeTransform(position);
+  switch (kind) {
+    case "box":
+      return { id, name: "Box", visible: true, locked: false, components: [t, { type: "mesh", primitive: { kind: "box", size: [1, 1, 1] } }, { type: "material", material: { kind: "standard", color: "#7ab841" } }] };
+    case "sphere":
+      return { id, name: "Sphere", visible: true, locked: false, components: [t, { type: "mesh", primitive: { kind: "sphere", radius: 0.5 } }, { type: "material", material: { kind: "standard", color: "#4a9bd4" } }] };
+    case "cylinder":
+      return { id, name: "Cylinder", visible: true, locked: false, components: [t, { type: "mesh", primitive: { kind: "cylinder", radiusTop: 0.5, radiusBottom: 0.5, height: 1 } }, { type: "material", material: { kind: "standard", color: "#e74c3c" } }] };
+    case "plane":
+      return { id, name: "Plane", visible: true, locked: false, components: [t, { type: "mesh", primitive: { kind: "plane", width: 2, height: 2 } }, { type: "material", material: { kind: "standard", color: "#888888" } }] };
+    case "torus":
+      return { id, name: "Torus", visible: true, locked: false, components: [t, { type: "mesh", primitive: { kind: "torus", radius: 0.5, tube: 0.2 } }, { type: "material", material: { kind: "standard", color: "#f0a500" } }] };
+    case "empty":
+      return { id, name: "Empty", visible: true, locked: false, components: [t] };
+    case "point-light":
+      return { id, name: "Point Light", visible: true, locked: false, components: [t, { type: "light", kind: "point", color: "#ffffff", intensity: 1 }] };
+    case "directional-light":
+      return { id, name: "Directional Light", visible: true, locked: false, components: [t, { type: "light", kind: "directional", color: "#ffffff", intensity: 1 }] };
+    case "spot-light":
+      return { id, name: "Spot Light", visible: true, locked: false, components: [t, { type: "light", kind: "spot", color: "#ffffff", intensity: 1, angle: Math.PI / 6 }] };
+    case "ambient-light":
+      return { id, name: "Ambient Light", visible: true, locked: false, components: [t, { type: "light", kind: "ambient", color: "#ffffff", intensity: 0.5 }] };
+    case "camera":
+      return { id, name: "Camera", visible: true, locked: false, components: [t, { type: "camera", kind: "perspective", fov: 45, near: 0.1, far: 200, active: false }] };
+  }
+}
+
+export const addNewObject = (scene: Scene3D, kind: AddObjectKind, position: Vec3 = [0, 1, 0]): Scene3D => ({
+  ...scene,
+  objects: [...scene.objects, buildGameObject(kind, position)],
+});
 
 // ── Private helpers ──────────────────────────────────────────────────────────
 

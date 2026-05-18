@@ -49,6 +49,7 @@ export type GlobalHotkeyHandlers = {
   onPlayPause?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  onAddObject?: () => void;
 };
 
 export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
@@ -118,6 +119,14 @@ export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
       // Tool palette — suppress inside inputs and modifier combos
       if (isTextInput(event.target)) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+      // Shift+A → Add Object
+      if (event.key === "A" && event.shiftKey) {
+        event.preventDefault();
+        handlers.onAddObject?.();
+        return;
+      }
+
       const tool = TOOL_HOTKEY[event.key.toLowerCase()];
       if (tool) {
         event.preventDefault();

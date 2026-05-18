@@ -1495,3 +1495,115 @@ input:focus, select:focus, textarea:focus {
   background: rgba(255, 184, 74, 0.1);
   border-left: 2px solid var(--accent-active);
 }
+
+/* ── Sprint 5 — hierarchy tree + Add Object menu ─────────────────── */
+
+/* Chevron */
+.outliner__chevron {
+  width: 12px;
+  min-width: 12px;
+  font-size: 9px;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+}
+.outliner__chevron.is-visible {
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+.outliner__chevron.is-visible:hover {
+  color: var(--text-primary);
+}
+
+/* Depth indentation is applied via inline style paddingLeft */
+
+/* Add Object Menu */
+.add-object-menu {
+  position: fixed;
+  z-index: 300;
+  top: 80px;
+  right: 348px;
+  width: 220px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
+  outline: none;
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+  overflow: hidden;
+}
+.add-object-menu__search-wrap {
+  padding: var(--space-2) var(--space-2) 0;
+}
+.add-object-menu__search {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border-panel);
+  color: var(--text-primary);
+  font-size: var(--font-ui);
+  padding: 3px 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+.add-object-menu__search:focus {
+  border-color: var(--accent-active);
+}
+.add-object-menu__body {
+  overflow-y: auto;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.add-object-menu__group-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 3px;
+}
+.add-object-menu__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+.add-object-menu__item {
+  background: var(--bg-panel-2);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  font-size: var(--font-ui);
+  transition: background 80ms, border-color 80ms, color 80ms;
+}
+.add-object-menu__item:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-panel);
+  color: var(--text-primary);
+}
+.add-object-menu__glyph {
+  font-size: 16px;
+  line-height: 1;
+}
+.add-object-menu__label {
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.add-object-menu__item:hover .add-object-menu__label {
+  color: var(--text-secondary);
+}
+.add-object-menu__empty {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: var(--font-ui);
+  padding: var(--space-2) 0;
+  text-align: center;
+}
+

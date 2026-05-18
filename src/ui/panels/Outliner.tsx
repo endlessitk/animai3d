@@ -7,6 +7,7 @@ import {
   duplicateObject,
   renameObject,
   reorderObjects,
+  setParent,
   toggleLock,
   toggleVisibility,
 } from "../../scene/sceneUtils";
@@ -28,7 +29,7 @@ const resolveTypeIcon = (obj: GameObject): IconHint => {
   return { glyph: "○", label: "Empty" };
 };
 
-// ── Tag system (C4D inline strip) ────────────────────────────────────────────
+// ── Tag system ────────────────────────────────────────────────────────────────
 
 type TagSpec = { id: string; glyph: string; modifier: string; label: string };
 
@@ -48,6 +49,41 @@ const collectTags = (obj: GameObject): TagSpec[] => {
   return tags;
 };
 
+// ── Tree builder ──────────────────────────────────────────────────────────────
+
+type FlatRow = { obj: GameObject; depth: number; hasChildren: boolean; sceneIndex: number };
+
+function buildFlatTree(objects: GameObject[], collapsed: Set<string>): FlatRow[] {
+  const objMap = new Map(objects.map((o, i) => [o.id, { obj: o, idx: i }]));
+  const childMap = new Map<string, string[]>();
+  const roots: string[] = [];
+
+  for (const obj of objects) {
+    const pid = obj.parentId;
+    if (pid && objMap.has(pid)) {
+      if (!childMap.has(pid)) childMap.set(pid, []);
+      childMap.get(pid)!.push(obj.id);
+    } else {
+      roots.push(obj.id);
+    }
+  }
+
+  const result: FlatRow[] = [];
+
+  function visit(id: string, depth: number) {
+    const entry = objMap.get(id);
+    if (!entry) return;
+    const children = childMap.get(id) ?? [];
+    result.push({ obj: entry.obj, depth, hasChildren: children.length > 0, sceneIndex: entry.idx });
+    if (!collapsed.has(id)) {
+      for (const childId of children) visit(childId, depth + 1);
+    }
+  }
+
+  for (const rootId of roots) visit(rootId, 0);
+  return result;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ContextMenuState = { objectId: string; x: number; y: number };
@@ -55,11 +91,12 @@ type ContextMenuState = { objectId: string; x: number; y: number };
 export type OutlinerProps = {
   scene: Scene3D;
   onSceneChange: (description: string, updater: (s: Scene3D) => Scene3D) => void;
+  onAddObjectOpen?: () => void;
 };
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
+export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange, onAddObjectOpen }) => {
   const { state, setSelected, toggleSelected } = useStudioState();
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -70,14 +107,27 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
   const [dragFromIndex, setDragFromIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const searchRef = useRef<HTMLInputElement>(null);
   const renameRef = useRef<HTMLInputElement>(null);
 
   const query = search.toLowerCase().trim();
-  const visible = query
-    ? scene.objects.filter((o) => o.name.toLowerCase().includes(query))
-    : scene.objects;
+
+  // When searching: flat filtered list; otherwise: tree
+  const rows: FlatRow[] = query
+    ? scene.objects
+        .filter((o) => o.name.toLowerCase().includes(query))
+        .map((o, i) => ({ obj: o, depth: 0, hasChildren: false, sceneIndex: scene.objects.indexOf(o) }))
+    : buildFlatTree(scene.objects, collapsed);
+
+  const toggleCollapse = useCallback((id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
 
   // Dismiss context menu on outside click
   useEffect(() => {
@@ -108,38 +158,45 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
   }, [renameId, renameValue, onSceneChange]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (renameId) return; // let rename input handle keys
-    const objs = visible;
-    const curIdx = focusedIndex ?? objs.findIndex((o) => o.id === state.selectedId);
+    if (renameId) return;
+    const curIdx = focusedIndex ?? rows.findIndex((r) => r.obj.id === state.selectedId);
+    const curRow = rows[curIdx];
 
     switch (e.key) {
       case "ArrowDown": {
         e.preventDefault();
-        const next = Math.min(curIdx + 1, objs.length - 1);
+        const next = Math.min(curIdx + 1, rows.length - 1);
         setFocusedIndex(next);
-        if (objs[next]) setSelected(objs[next].id);
+        if (rows[next]) setSelected(rows[next].obj.id);
         break;
       }
       case "ArrowUp": {
         e.preventDefault();
         const next = Math.max(curIdx - 1, 0);
         setFocusedIndex(next);
-        if (objs[next]) setSelected(objs[next].id);
+        if (rows[next]) setSelected(rows[next].obj.id);
+        break;
+      }
+      case "ArrowRight": {
+        e.preventDefault();
+        if (curRow?.hasChildren && collapsed.has(curRow.obj.id)) toggleCollapse(curRow.obj.id);
+        break;
+      }
+      case "ArrowLeft": {
+        e.preventDefault();
+        if (curRow?.hasChildren && !collapsed.has(curRow.obj.id)) toggleCollapse(curRow.obj.id);
         break;
       }
       case " ": {
         e.preventDefault();
-        const obj = objs[curIdx];
-        if (obj)
-          onSceneChange(`Toggle visibility: ${obj.name}`, (s) => toggleVisibility(s, obj.id));
+        if (curRow) onSceneChange(`Toggle visibility: ${curRow.obj.name}`, (s) => toggleVisibility(s, curRow.obj.id));
         break;
       }
       case "Delete":
       case "Backspace": {
         e.preventDefault();
-        const obj = objs[curIdx];
-        if (obj) {
-          onSceneChange(`Delete: ${obj.name}`, (s) => deleteObject(s, obj.id));
+        if (curRow) {
+          onSceneChange(`Delete: ${curRow.obj.name}`, (s) => deleteObject(s, curRow.obj.id));
           setSelected(null);
           setFocusedIndex(null);
         }
@@ -147,37 +204,50 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
       }
       case "F2":
       case "Enter": {
-        const obj = objs[curIdx];
-        if (obj) startRename(obj);
+        if (curRow) startRename(curRow.obj);
+        break;
+      }
+      // P → parent selected to active
+      case "p":
+      case "P": {
+        if (e.altKey) {
+          // Alt+P → clear parent
+          e.preventDefault();
+          if (curRow) onSceneChange(`Unparent: ${curRow.obj.name}`, (s) => setParent(s, curRow.obj.id, null));
+        } else if (!e.ctrlKey && !e.metaKey) {
+          e.preventDefault();
+          const activeId = state.selectedId;
+          if (curRow && activeId && activeId !== curRow.obj.id) {
+            onSceneChange(`Parent to active`, (s) => setParent(s, curRow.obj.id, activeId));
+          }
+        }
         break;
       }
     }
   };
 
-  // Drag reorder
-  const handleDragStart = (e: React.DragEvent, filteredIndex: number) => {
-    setDragFromIndex(filteredIndex);
+  // Drag reorder (operates on scene indices)
+  const handleDragStart = (e: React.DragEvent, rowIdx: number) => {
+    setDragFromIndex(rowIdx);
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e: React.DragEvent, filteredIndex: number) => {
+  const handleDragOver = (e: React.DragEvent, rowIdx: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    setDragOverIndex(filteredIndex);
+    setDragOverIndex(rowIdx);
   };
 
-  const handleDrop = (e: React.DragEvent, filteredIndex: number) => {
+  const handleDrop = (e: React.DragEvent, rowIdx: number) => {
     e.preventDefault();
-    if (dragFromIndex === null || dragFromIndex === filteredIndex) {
+    if (dragFromIndex === null || dragFromIndex === rowIdx) {
       setDragFromIndex(null);
       setDragOverIndex(null);
       return;
     }
-    const fromId = visible[dragFromIndex]?.id;
-    const toId = visible[filteredIndex]?.id;
-    if (!fromId || !toId) return;
-    const fromSceneIdx = scene.objects.findIndex((o) => o.id === fromId);
-    const toSceneIdx = scene.objects.findIndex((o) => o.id === toId);
+    const fromSceneIdx = rows[dragFromIndex]?.sceneIndex;
+    const toSceneIdx = rows[rowIdx]?.sceneIndex;
+    if (fromSceneIdx == null || toSceneIdx == null) return;
     onSceneChange("Reorder objects", (s) => reorderObjects(s, fromSceneIdx, toSceneIdx));
     setDragFromIndex(null);
     setDragOverIndex(null);
@@ -193,9 +263,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
     setContextMenu({ objectId: obj.id, x: e.clientX, y: e.clientY });
   };
 
-  const ctxObj = contextMenu
-    ? scene.objects.find((o) => o.id === contextMenu.objectId)
-    : null;
+  const ctxObj = contextMenu ? scene.objects.find((o) => o.id === contextMenu.objectId) : null;
 
   return (
     <section className="outliner" tabIndex={0} onKeyDown={handleKeyDown}>
@@ -212,7 +280,11 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
               else setSearch("");
             }}
           >🔍</button>
-          <button className="panel-header__btn" title="Add object">+</button>
+          <button
+            className="panel-header__btn"
+            title="Add object (Shift+A)"
+            onClick={() => onAddObjectOpen?.()}
+          >+</button>
         </div>
       </header>
 
@@ -229,18 +301,15 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
             }}
           />
           {search && (
-            <button
-              className="outliner__search-clear"
-              onClick={() => setSearch("")}
-              title="Clear"
-            >×</button>
+            <button className="outliner__search-clear" onClick={() => setSearch("")} title="Clear">×</button>
           )}
         </div>
       )}
 
       <div className="panel-body">
         <ul className="outliner__list">
-          {visible.map((obj, filteredIdx) => {
+          {rows.map((row, rowIdx) => {
+            const { obj, depth, hasChildren } = row;
             const icon = resolveTypeIcon(obj);
             const tags = collectTags(obj);
             const visibleTags = tags.slice(0, 4);
@@ -249,7 +318,8 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
             const isSelected = state.selectedId === obj.id;
             const isMultiSelected = state.selectedIds.includes(obj.id);
             const isRenaming = renameId === obj.id;
-            const isDragOver = dragOverIndex === filteredIdx;
+            const isDragOver = dragOverIndex === rowIdx;
+            const isCollapsed = collapsed.has(obj.id);
 
             return (
               <li
@@ -263,23 +333,30 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
                   !obj.visible ? "is-hidden" : "",
                   obj.locked ? "is-locked-row" : "",
                 ].filter(Boolean).join(" ")}
+                style={{ paddingLeft: depth * 12 + 4 }}
                 onClick={(e) => {
-                  if (e.ctrlKey || e.metaKey) {
-                    toggleSelected(obj.id);
-                  } else {
-                    setSelected(obj.id);
-                  }
-                  setFocusedIndex(filteredIdx);
+                  if (e.ctrlKey || e.metaKey) toggleSelected(obj.id);
+                  else setSelected(obj.id);
+                  setFocusedIndex(rowIdx);
                 }}
                 onDoubleClick={() => startRename(obj)}
                 onContextMenu={(e) => handleRightClick(e, obj)}
                 draggable={!isRenaming}
-                onDragStart={(e) => handleDragStart(e, filteredIdx)}
-                onDragOver={(e) => handleDragOver(e, filteredIdx)}
-                onDrop={(e) => handleDrop(e, filteredIdx)}
+                onDragStart={(e) => handleDragStart(e, rowIdx)}
+                onDragOver={(e) => handleDragOver(e, rowIdx)}
+                onDrop={(e) => handleDrop(e, rowIdx)}
                 onDragEnd={handleDragEnd}
                 title={`${obj.name} · ${icon.label}`}
               >
+                {/* Chevron — only shown when has children */}
+                <span
+                  className={`outliner__chevron ${hasChildren ? "is-visible" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); toggleCollapse(obj.id); }}
+                  aria-hidden
+                >
+                  {hasChildren ? (isCollapsed ? "▸" : "▾") : ""}
+                </span>
+
                 <span className="outliner__icon" aria-hidden>{icon.glyph}</span>
 
                 {isRenaming ? (
@@ -323,9 +400,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
                     title="Toggle visibility (Space)"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSceneChange(`Toggle visibility: ${obj.name}`, (s) =>
-                        toggleVisibility(s, obj.id),
-                      );
+                      onSceneChange(`Toggle visibility: ${obj.name}`, (s) => toggleVisibility(s, obj.id));
                     }}
                   >👁</button>
                   <button
@@ -334,9 +409,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
                     title="Toggle lock"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSceneChange(`Toggle lock: ${obj.name}`, (s) =>
-                        toggleLock(s, obj.id),
-                      );
+                      onSceneChange(`Toggle lock: ${obj.name}`, (s) => toggleLock(s, obj.id));
                     }}
                   >🔒</button>
                 </span>
@@ -344,7 +417,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
             );
           })}
 
-          {visible.length === 0 && query && (
+          {rows.length === 0 && query && (
             <li className="outliner__empty">No objects match "{search}"</li>
           )}
         </ul>
@@ -357,10 +430,7 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <button
-            className="context-menu__item"
-            onClick={() => startRename(ctxObj)}
-          >Rename</button>
+          <button className="context-menu__item" onClick={() => startRename(ctxObj)}>Rename</button>
           <button
             className="context-menu__item"
             onClick={() => {
@@ -372,22 +442,40 @@ export const Outliner: React.FC<OutlinerProps> = ({ scene, onSceneChange }) => {
           <button
             className="context-menu__item"
             onClick={() => {
-              onSceneChange(`Toggle visibility: ${ctxObj.name}`, (s) =>
-                toggleVisibility(s, ctxObj.id),
-              );
+              onSceneChange(`Toggle visibility: ${ctxObj.name}`, (s) => toggleVisibility(s, ctxObj.id));
               setContextMenu(null);
             }}
           >{ctxObj.visible ? "Hide" : "Show"}</button>
           <button
             className="context-menu__item"
             onClick={() => {
-              onSceneChange(`Toggle lock: ${ctxObj.name}`, (s) =>
-                toggleLock(s, ctxObj.id),
-              );
+              onSceneChange(`Toggle lock: ${ctxObj.name}`, (s) => toggleLock(s, ctxObj.id));
               setContextMenu(null);
             }}
           >{ctxObj.locked ? "Unlock" : "Lock"}</button>
           <div className="context-menu__separator" />
+          {/* Parenting */}
+          {state.selectedId && state.selectedId !== ctxObj.id && (
+            <button
+              className="context-menu__item"
+              onClick={() => {
+                onSceneChange(`Parent to active`, (s) => setParent(s, ctxObj.id, state.selectedId!));
+                setContextMenu(null);
+              }}
+            >Set Parent to Active</button>
+          )}
+          {ctxObj.parentId && (
+            <button
+              className="context-menu__item"
+              onClick={() => {
+                onSceneChange(`Unparent: ${ctxObj.name}`, (s) => setParent(s, ctxObj.id, null));
+                setContextMenu(null);
+              }}
+            >Clear Parent</button>
+          )}
+          {(state.selectedId && state.selectedId !== ctxObj.id) || ctxObj.parentId
+            ? <div className="context-menu__separator" />
+            : null}
           <button
             className="context-menu__item"
             onClick={() => {
