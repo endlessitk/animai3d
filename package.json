@@ -1,0 +1,36 @@
+{
+  "name": "agentic-3d-studio",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "AI-native 3D DCC — Cinema4D-like agentic viewport built on Three.js + react-three-fiber. See DESIGN_LANGUAGE.md.",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "task:new": "node scripts/create-agent-task.mjs",
+    "legacy:remotion:studio": "remotion studio src/remotion/index.ts --port=3010 --force-new",
+    "legacy:remotion:render": "remotion render src/remotion/index.ts AI2DStudio out/AI2DStudio.mp4 --codec=h264",
+    "legacy:remotion:still": "remotion still src/remotion/index.ts AI2DStudio out/stills/frame-000.png --frame=0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11",
+    "typescript": "^5.6.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "optionalDependencies": {
+    "@remotion/cli": "^4.0.271",
+    "remotion": "^4.0.271"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

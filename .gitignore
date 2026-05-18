@@ -1,0 +1,8 @@
+node_modules/
+dist/
+out/
+.remotion/
+agent-tasks/*.json
+!agent-tasks/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep

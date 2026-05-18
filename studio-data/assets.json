@@ -1,0 +1,11 @@
+[
+  {
+    "id": "asset-signal-orb",
+    "type": "effect",
+    "name": "Signal Orb Primitive",
+    "createdBy": "system",
+    "tags": ["glow", "primitive", "starter"],
+    "preview": "circle",
+    "editableParams": ["fill", "stroke", "radius", "opacity"]
+  }
+]

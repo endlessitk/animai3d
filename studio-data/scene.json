@@ -1,0 +1,41 @@
+{
+  "id": "scene-main",
+  "name": "Main Scene",
+  "background": "#07111f",
+  "objects": [
+    {
+      "id": "bg-grid",
+      "type": "shape",
+      "name": "Deep Grid Backdrop",
+      "transform": { "x": 0, "y": 0, "scaleX": 1, "scaleY": 1, "rotation": 0, "opacity": 1 },
+      "style": { "shape": "rect", "width": 1920, "height": 1080, "fill": "#07111f" },
+      "keyframes": [],
+      "visible": true,
+      "locked": true
+    },
+    {
+      "id": "signal-orb",
+      "type": "shape",
+      "name": "Signal Orb",
+      "transform": { "x": 840, "y": 430, "scaleX": 1, "scaleY": 1, "rotation": 0, "opacity": 0.95 },
+      "style": { "shape": "circle", "radius": 72, "fill": "#24ff9b", "stroke": "#baffd8", "strokeWidth": 3, "filter": "glow" },
+      "keyframes": [
+        { "frame": 0, "property": "y", "value": 430, "easing": "ease-in-out" },
+        { "frame": 90, "property": "y", "value": 360, "easing": "ease-in-out" },
+        { "frame": 180, "property": "y", "value": 430, "easing": "ease-in-out" }
+      ],
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "title-label",
+      "type": "text",
+      "name": "Title Label",
+      "transform": { "x": 96, "y": 910, "scaleX": 1, "scaleY": 1, "rotation": 0, "opacity": 0.9 },
+      "style": { "text": "AI INTEGRATED 2D ANIMATION SPACE", "fill": "#d9fff0", "fontSize": 42, "letterSpacing": 4, "fontFamily": "serif" },
+      "keyframes": [],
+      "visible": true,
+      "locked": false
+    }
+  ]
+}

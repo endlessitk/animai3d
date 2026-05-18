@@ -1,0 +1,12 @@
+[
+  {
+    "id": "clip-breathe-y",
+    "name": "Soft Vertical Breathe",
+    "targetType": "shape",
+    "keyframes": [
+      { "frame": 0, "property": "y", "value": 0, "easing": "ease-in-out" },
+      { "frame": 45, "property": "y", "value": -70, "easing": "ease-in-out" },
+      { "frame": 90, "property": "y", "value": 0, "easing": "ease-in-out" }
+    ]
+  }
+]
