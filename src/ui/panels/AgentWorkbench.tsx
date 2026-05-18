@@ -1,17 +1,6 @@
 import React, { useState } from "react";
 import { useStudioState } from "../../state/studioState";
-
-/**
- * Agent Workbench — 360px right dock, F12 toggle.
- *
- * Per DESIGN_LANGUAGE §10.5, the panel hosts 7 accordions:
- *   Chat / Tool Call Log / Scene Diff / Transaction History / Validation /
- *   Alternatives / Action Graph (V2 feature flag)
- *
- * Sprint 2 lands the accordion shell + empty-state copy. Sprint 6 wires the
- * actual chat transport, tool-call log streaming, scene-diff overlay, and
- * transaction history (depends on Sprint 5 transaction store).
- */
+import type { Transaction } from "../../state/transactions";
 
 type AccordionId =
   | "chat"
@@ -41,7 +30,7 @@ const ACCORDIONS: Array<{ id: AccordionId; label: string; placeholder: string }>
   {
     id: "transactions",
     label: "Transaction History",
-    placeholder: "T-NNN entries with before/after, affected objects, and rollback affordance.",
+    placeholder: "",
   },
   {
     id: "validation",
@@ -60,7 +49,11 @@ const ACCORDIONS: Array<{ id: AccordionId; label: string; placeholder: string }>
   },
 ];
 
-export const AgentWorkbench: React.FC = () => {
+export type AgentWorkbenchProps = {
+  transactions?: Transaction[];
+};
+
+export const AgentWorkbench: React.FC<AgentWorkbenchProps> = ({ transactions = [] }) => {
   const { state, toggleAgentPanel } = useStudioState();
   const [openAccordion, setOpenAccordion] = useState<AccordionId>("chat");
 
@@ -80,6 +73,11 @@ export const AgentWorkbench: React.FC = () => {
       <div className="agent-panel__body">
         {ACCORDIONS.map((acc) => {
           const isOpen = openAccordion === acc.id;
+          const badge =
+            acc.id === "transactions" && transactions.length > 0
+              ? transactions.length
+              : null;
+
           return (
             <section key={acc.id} className="agent-accordion">
               <button
@@ -88,12 +86,42 @@ export const AgentWorkbench: React.FC = () => {
                 onClick={() => setOpenAccordion(isOpen ? "chat" : acc.id)}
               >
                 <span>{acc.label}</span>
-                <span className="agent-accordion__chevron" aria-hidden>{isOpen ? "▾" : "▸"}</span>
+                {badge !== null && (
+                  <span className="agent-accordion__badge">{badge}</span>
+                )}
+                <span className="agent-accordion__chevron" aria-hidden>
+                  {isOpen ? "▾" : "▸"}
+                </span>
               </button>
+
               {isOpen && (
                 <div className="agent-accordion__body">
-                  <span className="agent-pill">stub</span>
-                  <p style={{ margin: "8px 0 0", lineHeight: 1.4 }}>{acc.placeholder}</p>
+                  {acc.id === "transactions" ? (
+                    transactions.length === 0 ? (
+                      <p className="tx-empty">No transactions yet.</p>
+                    ) : (
+                      <ul className="tx-list">
+                        {transactions.map((tx) => (
+                          <li key={tx.id} className={`tx-row tx-row--${tx.source}`}>
+                            <span className="tx-row__id">{tx.id}</span>
+                            <span className="tx-row__desc">{tx.description}</span>
+                            <span className="tx-row__time">
+                              {new Date(tx.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )
+                  ) : (
+                    <>
+                      <span className="agent-pill">stub</span>
+                      <p style={{ margin: "8px 0 0", lineHeight: 1.4 }}>{acc.placeholder}</p>
+                    </>
+                  )}
                 </div>
               )}
             </section>

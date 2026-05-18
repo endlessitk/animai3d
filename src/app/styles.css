@@ -1076,3 +1076,398 @@ input:focus, select:focus, textarea:focus {
   padding: 0 4px;
   border-radius: var(--radius-1);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Sprint 3 — Outliner interactions + Inspector field editors
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Outliner search bar ────────────────────────────────────────── */
+
+.outliner__search-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  height: 26px;
+  background: var(--bg-panel-2);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: var(--space-1);
+}
+.outliner__search-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  height: 20px;
+  padding: 0 var(--space-2);
+  outline: none;
+}
+.outliner__search-input:focus { border-color: var(--border-focus); }
+.outliner__search-clear {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.outliner__search-clear:hover { color: var(--text-primary); }
+
+/* ── Outliner row states (Sprint 3) ─────────────────────────────── */
+
+.outliner__row.is-dim { opacity: 0.3; }
+.outliner__row.is-hidden .outliner__name { opacity: 0.4; font-style: italic; }
+.outliner__row.is-locked-row .outliner__name { opacity: 0.6; }
+.outliner__row.is-drag-over { border-top: 2px solid var(--accent-select); }
+.outliner__rename-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border-focus);
+  border-radius: var(--radius-1);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  height: 18px;
+  padding: 0 4px;
+  outline: none;
+  min-width: 0;
+}
+.outliner__empty {
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-style: italic;
+  list-style: none;
+}
+
+/* ── Context menu ────────────────────────────────────────────────── */
+
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-1);
+  padding: var(--space-1) 0;
+  min-width: 160px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.context-menu--card {
+  position: absolute;
+  top: 24px;
+  right: 0;
+  z-index: 200;
+}
+.context-menu__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  padding: 4px var(--space-3);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.context-menu__item:hover { background: var(--bg-active); }
+.context-menu__item--danger { color: var(--text-error); }
+.context-menu__item--danger:hover { background: rgba(231, 76, 60, 0.15); }
+.context-menu__separator {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-1) 0;
+}
+
+/* ── Inspector field rows ────────────────────────────────────────── */
+
+.component-body { padding: var(--space-2) 0; }
+.field-row {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 1px var(--space-3);
+  gap: var(--space-2);
+}
+.field-row:hover { background: var(--bg-row-alt); }
+.field-label {
+  flex: 0 0 72px;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.field-value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.field-badge {
+  display: inline-block;
+  background: var(--bg-panel-2);
+  border-radius: var(--radius-1);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--font-sm);
+  padding: 1px 5px;
+}
+.field-text {
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+/* ── NumericField ────────────────────────────────────────────────── */
+
+.num-field {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: ew-resize;
+  user-select: none;
+  height: 20px;
+  background: var(--bg-input);
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  padding: 0 4px;
+  min-width: 0;
+  flex: 1;
+}
+.num-field:hover { border-color: var(--border-subtle); }
+.num-field.is-editing { border-color: var(--border-focus); cursor: default; }
+.num-field__axis {
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 10px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.num-field__axis--x { color: var(--axis-x); }
+.num-field__axis--y { color: var(--axis-y); }
+.num-field__axis--z { color: var(--axis-z); }
+.num-field__value {
+  flex: 1;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.num-field__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-sm);
+  text-align: right;
+  cursor: text;
+  outline: none;
+  width: 100%;
+  min-width: 0;
+}
+.num-field__unit {
+  margin-left: 2px;
+  color: var(--text-secondary);
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+/* ── Vec3Field ───────────────────────────────────────────────────── */
+
+.vec3-field {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── ColorHexField ───────────────────────────────────────────────── */
+
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+.color-field__swatch {
+  display: flex;
+  align-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-1);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.color-field__native {
+  opacity: 0;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+.color-field__hex {
+  background: var(--bg-input);
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-sm);
+  height: 20px;
+  padding: 0 4px;
+  outline: none;
+  width: 72px;
+}
+.color-field__hex:focus { border-color: var(--border-focus); }
+
+/* ── Component card actions ──────────────────────────────────────── */
+
+.component-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* ── Add Component popup ─────────────────────────────────────────── */
+
+.add-component-popup {
+  position: absolute;
+  bottom: 36px;
+  left: var(--space-3);
+  right: var(--space-3);
+  z-index: 200;
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.add-component-popup__search-row {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.add-component-popup__search {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid transparent;
+  border-radius: var(--radius-1);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  height: 24px;
+  padding: 0 var(--space-2);
+  outline: none;
+  box-sizing: border-box;
+}
+.add-component-popup__search:focus { border-color: var(--border-focus); }
+.add-component-popup__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  padding: var(--space-1);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.add-component-popup__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  border-radius: var(--radius-1);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--font-sm);
+  padding: var(--space-2);
+  text-align: left;
+}
+.add-component-popup__item:hover { background: var(--bg-active); }
+.add-component-popup__item.is-disabled { opacity: 0.35; cursor: not-allowed; }
+.add-component-popup__icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+.add-component-popup__label { font-size: var(--font-sm); }
+.add-component-popup__empty {
+  grid-column: 1 / -1;
+  padding: var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-style: italic;
+  text-align: center;
+}
+
+/* ── Transaction list in AgentWorkbench ──────────────────────────── */
+
+.tx-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tx-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 3px var(--space-2);
+  font-size: var(--font-sm);
+  border-radius: var(--radius-1);
+}
+.tx-row:hover { background: var(--bg-active); }
+.tx-row--human .tx-row__id { color: var(--text-secondary); }
+.tx-row--agent .tx-row__id { color: var(--accent-agent); }
+.tx-row__id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.tx-row__desc {
+  flex: 1;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tx-row__time {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.tx-empty {
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-style: italic;
+  margin: var(--space-2) 0 0;
+}
+.agent-accordion__badge {
+  background: var(--accent-agent);
+  border-radius: var(--radius-2);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 1px 5px;
+  margin-right: auto;
+}
+
+/* ── Status bar transaction chip ─────────────────────────────────── */
+
+.status-bar__chip--tx {
+  background: var(--bg-panel-2);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}

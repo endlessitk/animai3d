@@ -1,7 +1,9 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { SceneRenderer3D } from "../scene/SceneRenderer3D";
 import { useViewport3DRuntime } from "../engine/runtime/Viewport3DRuntime";
-import type { Scene3D, StudioProject } from "../scene/schema";
+import type { Component, Scene3D, StudioProject } from "../scene/schema";
+import type { Transaction } from "../state/transactions";
+import { addComponent } from "../scene/sceneUtils";
 import { useStudioState } from "../state/studioState";
 import { useGlobalHotkeys } from "../state/useGlobalHotkeys";
 import { AppBar } from "./chrome/AppBar";
@@ -12,6 +14,7 @@ import { ToolPalette } from "./chrome/ToolPalette";
 import { StatusBar } from "./chrome/StatusBar";
 import { Outliner } from "./panels/Outliner";
 import { Inspector } from "./panels/Inspector";
+import { AddComponentPopup } from "./panels/AddComponentPopup";
 import { ContentBrowser } from "./panels/ContentBrowser";
 import { AgentWorkbench } from "./panels/AgentWorkbench";
 import { TransportBar } from "./timeline/TransportBar";
@@ -20,31 +23,28 @@ import { CommandPalette } from "./CommandPalette";
 export type AppShellProps = {
   project: StudioProject;
   scene: Scene3D;
+  transactions: Transaction[];
+  onSceneChange: (description: string, updater: (s: Scene3D) => Scene3D) => void;
   onResetScene: () => void;
   onExportScene: () => void;
 };
 
-/**
- * AppShell — Sprint 2 chrome layer orchestrator.
- *
- * CSS Grid:
- *   columns: 48 [tool] · 1fr [viewport] · 340 [right] · {0|360|500} [agent]
- *   rows:    28 [appbar] · 30 [workspace] · 36 [toolbar] · 30 [subtoolbar] ·
- *            1fr [viewport+transport] · {0|240} [content] · 22 [status]
- *
- * Agent column = 0 when closed, 360 when open, 500 when the Agent workspace
- * is active (matches §1.3). Content row = 0 unless toggled by the user (or
- * auto-opened when Material workspace is active).
- */
-export const AppShell: React.FC<AppShellProps> = ({ project, scene, onResetScene, onExportScene }) => {
+export const AppShell: React.FC<AppShellProps> = ({
+  project,
+  scene,
+  transactions,
+  onSceneChange,
+  onResetScene,
+  onExportScene,
+}) => {
   const studio = useStudioState();
   const runtime = useViewport3DRuntime(project, scene);
   const frame = Math.round(runtime.state.frame);
 
+  const [addComponentOpen, setAddComponentOpen] = useState(false);
+
   useGlobalHotkeys({ onPlayPause: runtime.toggle });
 
-  // Push FPS hint into studio state so the status bar reads from a single
-  // source instead of receiving a prop drill chain.
   useEffect(() => {
     studio.setFpsHint(runtime.state.measuredFps);
   }, [runtime.state.measuredFps, studio]);
@@ -55,6 +55,17 @@ export const AppShell: React.FC<AppShellProps> = ({ project, scene, onResetScene
     studio.state.contentBrowserOpen ? "app-shell--content-open" : "",
     studio.state.workspace === "agent" ? "app-shell--workspace-agent" : "",
   ].filter(Boolean).join(" ");
+
+  // Resolve selected object for Add Component popup
+  const selectedObj = studio.state.selectedId
+    ? scene.objects.find((o) => o.id === studio.state.selectedId)
+    : null;
+
+  const handleAddComponent = (component: Component) => {
+    if (!studio.state.selectedId) return;
+    const id = studio.state.selectedId;
+    onSceneChange(`Add ${component.type}`, (s) => addComponent(s, id, component));
+  };
 
   return (
     <div className={shellClass}>
@@ -72,7 +83,6 @@ export const AppShell: React.FC<AppShellProps> = ({ project, scene, onResetScene
             selectedId={studio.state.selectedId}
             onSelect={studio.setSelected}
           />
-          {/* §4.1 corner overlays — Sprint 4 makes them functional */}
           <div className="viewport-overlay viewport-overlay--tl">
             <span>View</span>
             <span className="dim">▾</span>
@@ -107,11 +117,24 @@ export const AppShell: React.FC<AppShellProps> = ({ project, scene, onResetScene
       </div>
 
       <div className="right-panel">
-        <Outliner scene={scene} />
-        <Inspector scene={scene} />
+        <Outliner scene={scene} onSceneChange={onSceneChange} />
+        <div style={{ position: "relative" }}>
+          <Inspector
+            scene={scene}
+            onSceneChange={onSceneChange}
+            onAddComponentOpen={() => setAddComponentOpen(true)}
+          />
+          {addComponentOpen && selectedObj && (
+            <AddComponentPopup
+              existingTypes={selectedObj.components.map((c) => c.type)}
+              onAdd={handleAddComponent}
+              onClose={() => setAddComponentOpen(false)}
+            />
+          )}
+        </div>
       </div>
 
-      <AgentWorkbench />
+      <AgentWorkbench transactions={transactions} />
 
       {studio.state.contentBrowserOpen && <ContentBrowser />}
 
@@ -120,6 +143,7 @@ export const AppShell: React.FC<AppShellProps> = ({ project, scene, onResetScene
         fps={runtime.state.measuredFps}
         frame={frame}
         durationInFrames={runtime.state.durationInFrames}
+        lastTransaction={transactions[0]}
       />
 
       <CommandPalette />

@@ -2,12 +2,14 @@ import React from "react";
 import { useStudioState } from "../../state/studioState";
 import type { Scene3D } from "../../scene/schema";
 import { findComponent } from "../../scene/schema";
+import type { Transaction } from "../../state/transactions";
 
 export type StatusBarProps = {
   scene: Scene3D;
   fps: number;
   frame: number;
   durationInFrames: number;
+  lastTransaction?: Transaction;
 };
 
 /**
@@ -47,7 +49,7 @@ const fpsClass = (fps: number): string => {
 
 const formatNumber = (n: number): string => n.toLocaleString("en-US");
 
-export const StatusBar: React.FC<StatusBarProps> = ({ scene, fps, frame, durationInFrames }) => {
+export const StatusBar: React.FC<StatusBarProps> = ({ scene, fps, frame, durationInFrames, lastTransaction }) => {
   const { state, toggleValidationDrawer, toggleAgentPanel } = useStudioState();
   const stats = estimateTris(scene);
   const selectedObject = state.selectedId
@@ -106,6 +108,12 @@ export const StatusBar: React.FC<StatusBarProps> = ({ scene, fps, frame, duratio
       >
         {validationCount > 0 ? `⚠ ${validationCount}` : "✓ clean"}
       </button>
+
+      {lastTransaction && (
+        <span className="status-bar__chip status-bar__chip--tx" title={lastTransaction.description}>
+          {lastTransaction.id}
+        </span>
+      )}
 
       <button
         type="button"
