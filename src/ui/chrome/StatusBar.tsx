@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useStudioState } from "../../state/studioState";
 import type { Scene3D } from "../../scene/schema";
 import { findComponent } from "../../scene/schema";
+import { countBySeverity, hasErrors, validateScene } from "../../scene/validation";
 import type { Transaction } from "../../state/transactions";
 
 export type StatusBarProps = {
@@ -56,7 +57,16 @@ export const StatusBar: React.FC<StatusBarProps> = ({ scene, fps, frame, duratio
     ? scene.objects.find((o) => o.id === state.selectedId)
     : null;
 
-  const validationCount = 0; // Sprint 5 will surface real counts.
+  const issues = useMemo(() => validateScene(scene), [scene]);
+  const validationCount = issues.length;
+  const validationCounts = countBySeverity(issues);
+  const validationHasError = hasErrors(issues);
+
+  const chipLabel = validationCount === 0
+    ? "✓ clean"
+    : validationHasError
+      ? `■ ${validationCounts.error} ▲ ${validationCounts.warning}`
+      : `▲ ${validationCount}`;
 
   return (
     <footer className="status-bar">
@@ -102,11 +112,15 @@ export const StatusBar: React.FC<StatusBarProps> = ({ scene, fps, frame, duratio
 
       <button
         type="button"
-        className={`status-bar__chip ${validationCount > 0 ? "is-warning" : ""}`}
+        className={`status-bar__chip${validationHasError ? " is-error is-pulse" : validationCount > 0 ? " is-warning" : ""}`}
         onClick={toggleValidationDrawer}
-        title="Toggle validation drawer"
+        title={
+          validationCount === 0
+            ? "Scene passes all rules"
+            : `${validationCount} issue(s) — click to open Validation drawer`
+        }
       >
-        {validationCount > 0 ? `⚠ ${validationCount}` : "✓ clean"}
+        {chipLabel}
       </button>
 
       {lastTransaction && (

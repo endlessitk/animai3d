@@ -21,6 +21,7 @@ import { AddComponentPopup } from "./panels/AddComponentPopup";
 import { AddObjectMenu } from "./panels/AddObjectMenu";
 import { ContentBrowser } from "./panels/ContentBrowser";
 import { AgentWorkbench } from "./panels/AgentWorkbench";
+import { ValidationPanel } from "./panels/ValidationPanel";
 import { TimelinePanel } from "./timeline/TimelinePanel";
 import { TransportBar } from "./timeline/TransportBar";
 import { CommandPalette } from "./CommandPalette";
@@ -237,7 +238,8 @@ export const AppShell: React.FC<AppShellProps> = ({
         onSceneChange={onSceneChange}
       />
 
-      {studio.state.contentBrowserOpen && <ContentBrowser />}
+      {studio.state.contentBrowserOpen && <ContentBrowser scene={scene} />}
+      <ValidationPanel scene={scene} onSceneChange={onSceneChange} />
 
       <StatusBar
         scene={scene}

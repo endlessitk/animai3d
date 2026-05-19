@@ -1994,3 +1994,174 @@ input:focus, select:focus, textarea:focus {
   filter: brightness(1.1);
 }
 
+/* ── Sprint 9 — Validation panel + Content Browser cards ─────────── */
+
+/* Validation panel — slide-up overlay */
+.validation-panel {
+  position: fixed;
+  left: 48px;
+  right: 348px;
+  bottom: 22px;
+  max-height: 280px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-panel);
+  z-index: 250;
+  display: flex;
+  flex-direction: column;
+}
+.app-shell--agent-open .validation-panel {
+  right: 360px;
+}
+.validation-panel__header {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid var(--border-panel);
+  background: var(--bg-panel-2);
+}
+.validation-panel__title {
+  font-size: var(--font-ui);
+  color: var(--text-primary);
+}
+.validation-panel__counts {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: var(--space-2);
+}
+.validation-chip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+}
+.validation-chip.is-error { color: var(--accent-error, #e74c3c); }
+.validation-chip.is-warning { color: var(--accent-warning, #f0a500); }
+.validation-chip.is-info { color: var(--text-muted); }
+.validation-chip.is-ok { color: var(--accent-success, #7ab841); }
+
+.validation-panel__body {
+  overflow-y: auto;
+  flex: 1;
+}
+.validation-panel__empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: var(--space-2);
+  font-size: var(--font-ui);
+}
+.validation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.validation-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border-panel);
+}
+.validation-row__icon {
+  text-align: center;
+  font-size: 12px;
+}
+.validation-row.is-error .validation-row__icon { color: var(--accent-error, #e74c3c); }
+.validation-row.is-warning .validation-row__icon { color: var(--accent-warning, #f0a500); }
+.validation-row.is-info .validation-row__icon { color: var(--text-muted); }
+.validation-row__rule {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.validation-row__msg {
+  font-size: var(--font-ui);
+  color: var(--text-primary);
+}
+.validation-row__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+.validation-row__btn {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border-panel);
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 2px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.validation-row__btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.validation-row__btn--fix:hover {
+  border-color: var(--accent-success, #7ab841);
+  color: var(--accent-success, #7ab841);
+}
+
+/* StatusBar chip extra states (error pulse) */
+.status-bar__chip.is-error {
+  color: var(--accent-error, #e74c3c);
+  border: 1px solid var(--accent-error, #e74c3c);
+}
+.status-bar__chip.is-pulse {
+  animation: chip-pulse 1.4s ease-in-out infinite;
+}
+@keyframes chip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+/* Asset cards */
+.asset-card {
+  background: var(--bg-panel-2);
+  border: 1px solid var(--border-panel);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px;
+  text-align: left;
+  transition: background 80ms, border-color 80ms;
+  min-width: 0;
+}
+.asset-card:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-active);
+}
+.asset-card.is-agent {
+  border-left: 2px solid var(--accent-active);
+}
+.asset-card__thumb {
+  width: 100%;
+  height: 50px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--text-secondary);
+}
+.asset-card__label {
+  font-size: var(--font-ui);
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asset-card__detail {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
