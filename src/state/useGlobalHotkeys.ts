@@ -50,6 +50,7 @@ export type GlobalHotkeyHandlers = {
   onUndo?: () => void;
   onRedo?: () => void;
   onAddObject?: () => void;
+  onHelp?: () => void;
 };
 
 export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
@@ -129,6 +130,13 @@ export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
       if (event.key === "A" && event.shiftKey) {
         event.preventDefault();
         handlers.onAddObject?.();
+        return;
+      }
+
+      // ? (Shift+/) → Help overlay
+      if (event.key === "?") {
+        event.preventDefault();
+        handlers.onHelp?.();
         return;
       }
 

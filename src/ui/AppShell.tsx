@@ -25,6 +25,8 @@ import { ValidationPanel } from "./panels/ValidationPanel";
 import { TimelinePanel } from "./timeline/TimelinePanel";
 import { TransportBar } from "./timeline/TransportBar";
 import { CommandPalette } from "./CommandPalette";
+import { HelpOverlay } from "./HelpOverlay";
+import { FirstRunTour } from "./FirstRunTour";
 
 // ── Tool → gizmo mode ─────────────────────────────────────────────────────────
 
@@ -71,6 +73,7 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   const [addComponentOpen, setAddComponentOpen] = useState(false);
   const [addObjectOpen, setAddObjectOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const gizmoMode = toolToGizmoMode(studio.state.tool);
 
@@ -86,6 +89,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     onUndo,
     onRedo,
     onAddObject: () => setAddObjectOpen(true),
+    onHelp: () => setHelpOpen((v) => !v),
   });
 
   // Keep FPS hint in studio state for StatusBar
@@ -249,7 +253,16 @@ export const AppShell: React.FC<AppShellProps> = ({
         lastTransaction={transactions[0]}
       />
 
-      <CommandPalette />
+      <CommandPalette
+        scene={scene}
+        onSceneChange={onSceneChange}
+        onUndo={onUndo}
+        onRedo={onRedo}
+        onPlayPause={runtime.toggle}
+        onResetScene={onResetScene}
+      />
+      <HelpOverlay open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <FirstRunTour />
     </div>
   );
 };
