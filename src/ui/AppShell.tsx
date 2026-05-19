@@ -21,6 +21,7 @@ import { AddComponentPopup } from "./panels/AddComponentPopup";
 import { AddObjectMenu } from "./panels/AddObjectMenu";
 import { ContentBrowser } from "./panels/ContentBrowser";
 import { AgentWorkbench } from "./panels/AgentWorkbench";
+import { TimelinePanel } from "./timeline/TimelinePanel";
 import { TransportBar } from "./timeline/TransportBar";
 import { CommandPalette } from "./CommandPalette";
 
@@ -160,6 +161,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             snap={studio.state.snap}
             snapMagnet={studio.state.snapMagnet}
             transformReference={studio.state.transformReference}
+            currentFrame={runtime.state.frame}
             onSelect={handleViewportSelect}
             onTransformCommit={handleTransformCommit}
           />
@@ -180,6 +182,13 @@ export const AppShell: React.FC<AppShellProps> = ({
             <span className="dim">grid 1.0 cm · {project.width}×{project.height}</span>
           </div>
         </div>
+        <TimelinePanel
+          scene={scene}
+          selectedId={studio.state.selectedId}
+          currentFrame={frame}
+          durationInFrames={runtime.state.durationInFrames}
+          onSeek={runtime.seek}
+        />
         <TransportBar
           playing={runtime.state.playing}
           loop={runtime.state.loop}
@@ -208,6 +217,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <div style={{ position: "relative" }}>
           <Inspector
             scene={scene}
+            currentFrame={frame}
             onSceneChange={onSceneChange}
             onAddComponentOpen={() => setAddComponentOpen(true)}
           />

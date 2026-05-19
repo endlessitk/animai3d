@@ -515,7 +515,7 @@ input:focus, select:focus, textarea:focus {
 .viewport-area {
   grid-area: viewport;
   display: grid;
-  grid-template-rows: 1fr var(--h-transport);
+  grid-template-rows: 1fr 180px var(--h-transport);
   min-width: 0;
   min-height: 0;
   background: var(--bg-window);
@@ -1604,6 +1604,203 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-muted);
   font-size: var(--font-ui);
   padding: var(--space-2) 0;
+  text-align: center;
+}
+
+/* ── Sprint 7 — Animation (keyframes + dopesheet) ────────────────── */
+
+.field-keyframe-btn {
+  background: transparent;
+  border: 1px solid var(--border-panel);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: var(--space-2);
+  padding: 0;
+  transition: color 80ms, background 80ms, border-color 80ms;
+}
+.field-keyframe-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent-active);
+  border-color: var(--accent-active);
+}
+
+.anim-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.anim-track {
+  border: 1px solid var(--border-panel);
+  padding: var(--space-2);
+  background: var(--bg-panel-2);
+}
+.anim-track__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+.anim-track__name {
+  color: var(--text-primary);
+  font-size: var(--font-ui);
+}
+.anim-track__count {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+.anim-track__keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.anim-key {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
+  color: var(--accent-active);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  transition: background 80ms;
+}
+.anim-key:hover {
+  background: var(--bg-hover);
+  color: var(--accent-error, #e74c3c);
+}
+
+/* Timeline panel (Sprint 7 Stage 4) */
+.timeline-panel {
+  background: var(--bg-timeline);
+  border-top: 1px solid var(--border-panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.timeline-panel__header {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid var(--border-panel);
+  background: var(--bg-panel);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  gap: var(--space-2);
+}
+.timeline-panel__tab {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+.timeline-panel__tab.is-active {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--accent-active);
+}
+.timeline-panel__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.timeline-ruler {
+  height: 18px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-panel);
+  position: relative;
+  cursor: ew-resize;
+  user-select: none;
+}
+.timeline-ruler__tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-panel);
+}
+.timeline-ruler__label {
+  position: absolute;
+  top: 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  transform: translateX(2px);
+}
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--accent-active);
+  pointer-events: none;
+  z-index: 2;
+}
+.timeline-playhead__head {
+  position: absolute;
+  top: 0;
+  left: -4px;
+  width: 9px;
+  height: 9px;
+  background: var(--accent-active);
+}
+.timeline-tracks {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+.timeline-track {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-panel);
+  position: relative;
+  padding-left: var(--space-2);
+}
+.timeline-track__label {
+  width: 100px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+.timeline-track__lane {
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+.timeline-key {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-active);
+  transform: translate(-50%, -50%) rotate(45deg);
+  cursor: pointer;
+  transition: background 80ms;
+}
+.timeline-key:hover {
+  background: #fff;
+}
+.timeline-empty {
+  color: var(--text-muted);
+  font-size: 10px;
+  padding: var(--space-2);
   text-align: center;
 }
 

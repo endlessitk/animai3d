@@ -1,4 +1,15 @@
-import type { Component, ComponentType, GameObject, Scene3D, Transform3D, Vec3 } from "./schema";
+import type {
+  AnimationComponent,
+  AnimationProperty,
+  Component,
+  ComponentType,
+  EasingName3D,
+  GameObject,
+  Keyframe3D,
+  Scene3D,
+  Transform3D,
+  Vec3,
+} from "./schema";
 
 // ── Object-level mutations ───────────────────────────────────────────────────
 
@@ -184,6 +195,84 @@ export const addNewObject = (scene: Scene3D, kind: AddObjectKind, position: Vec3
   ...scene,
   objects: [...scene.objects, buildGameObject(kind, position)],
 });
+
+// ── Animation mutations ──────────────────────────────────────────────────────
+
+const ensureAnimationComponent = (obj: GameObject): GameObject => {
+  if (obj.components.some((c) => c.type === "animation")) return obj;
+  const empty: AnimationComponent = { type: "animation", tracks: [] };
+  return { ...obj, components: [...obj.components, empty] };
+};
+
+const upsertKeyframe = (
+  track: { property: AnimationProperty; keyframes: Keyframe3D[] },
+  frame: number,
+  value: Vec3,
+  easing: EasingName3D,
+) => {
+  const idx = track.keyframes.findIndex((k) => k.frame === frame);
+  if (idx >= 0) {
+    const next = [...track.keyframes];
+    next[idx] = { frame, value, easing };
+    return next;
+  }
+  return [...track.keyframes, { frame, value, easing }].sort((a, b) => a.frame - b.frame);
+};
+
+export const setKeyframe = (
+  scene: Scene3D,
+  id: string,
+  property: AnimationProperty,
+  frame: number,
+  value: Vec3,
+  easing: EasingName3D = "linear",
+): Scene3D => {
+  const withAnim = mapObj(scene, id, ensureAnimationComponent);
+  return mapObj(withAnim, id, (o) => ({
+    ...o,
+    components: o.components.map((c) => {
+      if (c.type !== "animation") return c;
+      const existing = c.tracks.find((t) => t.property === property);
+      if (existing) {
+        return {
+          ...c,
+          tracks: c.tracks.map((t) =>
+            t.property === property
+              ? { ...t, keyframes: upsertKeyframe(t, frame, value, easing) }
+              : t,
+          ),
+        };
+      }
+      return {
+        ...c,
+        tracks: [...c.tracks, { property, keyframes: [{ frame, value, easing }] }],
+      };
+    }),
+  }));
+};
+
+export const removeKeyframe = (
+  scene: Scene3D,
+  id: string,
+  property: AnimationProperty,
+  frame: number,
+): Scene3D =>
+  mapObj(scene, id, (o) => ({
+    ...o,
+    components: o.components.map((c) => {
+      if (c.type !== "animation") return c;
+      return {
+        ...c,
+        tracks: c.tracks
+          .map((t) =>
+            t.property === property
+              ? { ...t, keyframes: t.keyframes.filter((k) => k.frame !== frame) }
+              : t,
+          )
+          .filter((t) => t.keyframes.length > 0),
+      };
+    }),
+  }));
 
 // ── Private helpers ──────────────────────────────────────────────────────────
 

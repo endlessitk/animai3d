@@ -88,6 +88,13 @@ const COMPONENT_DEFS: ComponentDef[] = [
       reviewedByHuman: false,
     }),
   },
+  {
+    type: "animation",
+    label: "Animation",
+    icon: "◆",
+    description: "Keyframe tracks for position/rotation/scale",
+    build: () => ({ type: "animation", tracks: [] }),
+  },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────

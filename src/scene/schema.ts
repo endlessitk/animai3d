@@ -190,6 +190,28 @@ export type TagComponent = {
   labels: string[];
 };
 
+// ── Animation ───────────────────────────────────────────────────────────────
+
+export type EasingName3D = "linear" | "step" | "ease-in" | "ease-out" | "ease-in-out";
+
+export type AnimationProperty = "position" | "rotation" | "scale";
+
+export type Keyframe3D = {
+  frame: number;
+  value: Vec3;
+  easing: EasingName3D;
+};
+
+export type AnimationTrack = {
+  property: AnimationProperty;
+  keyframes: Keyframe3D[];
+};
+
+export type AnimationComponent = {
+  type: "animation";
+  tracks: AnimationTrack[];
+};
+
 export type Component =
   | TransformComponent
   | MeshComponent
@@ -197,7 +219,8 @@ export type Component =
   | CameraComponent
   | LightComponent
   | AgentMetadataComponent
-  | TagComponent;
+  | TagComponent
+  | AnimationComponent;
 
 export type ComponentType = Component["type"];
 

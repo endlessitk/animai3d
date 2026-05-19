@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { Grid, OrbitControls, PerspectiveCamera, TransformControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
   findComponent,
+  type AnimationComponent,
   type CameraComponent,
   type Component,
   type GameObject,
@@ -17,6 +18,7 @@ import {
   type Vec3,
   IDENTITY_TRANSFORM_3D,
 } from "./schema";
+import { sampleAnimation } from "./animationSampler";
 import type { ShadingMode, SnapMode, TransformReference } from "../state/studioState";
 
 // ── Gizmo mode ────────────────────────────────────────────────────────────────
@@ -277,6 +279,46 @@ const resolveActiveCamera = (scene: Scene3D): ResolvedCamera => {
   };
 };
 
+// ── Animation applier (runs inside Canvas, mutates groups every frame) ───────
+
+type AnimationApplierProps = {
+  scene: Scene3D;
+  groupRegistry: React.MutableRefObject<Map<string, THREE.Group>>;
+  currentFrame: number;
+  suppressId: string | null;
+};
+
+const AnimationApplier: React.FC<AnimationApplierProps> = ({
+  scene,
+  groupRegistry,
+  currentFrame,
+  suppressId,
+}) => {
+  const frameRef = useRef(currentFrame);
+  frameRef.current = currentFrame;
+  const suppressRef = useRef(suppressId);
+  suppressRef.current = suppressId;
+
+  useFrame(() => {
+    const frame = frameRef.current;
+    const suppress = suppressRef.current;
+    for (const obj of scene.objects) {
+      if (obj.id === suppress) continue;
+      const anim = obj.components.find((c) => c.type === "animation") as
+        | AnimationComponent
+        | undefined;
+      if (!anim || anim.tracks.length === 0) continue;
+      const group = groupRegistry.current.get(obj.id);
+      if (!group) continue;
+      const sampled = sampleAnimation(anim, frame);
+      if (sampled.position) group.position.set(sampled.position[0], sampled.position[1], sampled.position[2]);
+      if (sampled.rotation) group.rotation.set(sampled.rotation[0], sampled.rotation[1], sampled.rotation[2]);
+      if (sampled.scale) group.scale.set(sampled.scale[0], sampled.scale[1], sampled.scale[2]);
+    }
+  });
+  return null;
+};
+
 // ── Inner canvas scene ────────────────────────────────────────────────────────
 
 type SceneContentProps = {
@@ -288,6 +330,7 @@ type SceneContentProps = {
   snap: SnapMode;
   snapMagnet: boolean;
   transformReference: TransformReference;
+  currentFrame: number;
   onSelect: (id: string | null, addToSelection?: boolean) => void;
   onTransformCommit: (id: string, transform: Transform3D) => void;
   showHelpers: boolean;
@@ -302,6 +345,7 @@ const SceneContent: React.FC<SceneContentProps> = ({
   snap,
   snapMagnet,
   transformReference,
+  currentFrame,
   onSelect,
   onTransformCommit,
   showHelpers,
@@ -396,6 +440,13 @@ const SceneContent: React.FC<SceneContentProps> = ({
           onMouseUp={handleTransformMouseUp}
         />
       )}
+
+      <AnimationApplier
+        scene={scene}
+        groupRegistry={groupRegistry}
+        currentFrame={currentFrame}
+        suppressId={isDragging ? selectedId : null}
+      />
     </>
   );
 };
@@ -411,6 +462,7 @@ export type SceneRenderer3DProps = {
   snap: SnapMode;
   snapMagnet: boolean;
   transformReference: TransformReference;
+  currentFrame: number;
   onSelect: (id: string | null, addToSelection?: boolean) => void;
   onTransformCommit: (id: string, transform: Transform3D) => void;
   showHelpers?: boolean;
@@ -425,6 +477,7 @@ export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
   snap,
   snapMagnet,
   transformReference,
+  currentFrame,
   onSelect,
   onTransformCommit,
   showHelpers = true,
@@ -444,6 +497,7 @@ export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
       snap={snap}
       snapMagnet={snapMagnet}
       transformReference={transformReference}
+      currentFrame={currentFrame}
       onSelect={onSelect}
       onTransformCommit={onTransformCommit}
       showHelpers={showHelpers}

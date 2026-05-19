@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { useStudioState } from "../../state/studioState";
 import type {
   AgentMetadataComponent,
+  AnimationComponent,
+  AnimationProperty,
   CameraComponent,
   Component,
   ComponentType,
@@ -13,7 +15,12 @@ import type {
   TransformComponent,
   Vec3,
 } from "../../scene/schema";
-import { removeComponentAtIndex, updateComponentAtIndex } from "../../scene/sceneUtils";
+import {
+  removeComponentAtIndex,
+  removeKeyframe,
+  setKeyframe,
+  updateComponentAtIndex,
+} from "../../scene/sceneUtils";
 
 // ── Field primitives ──────────────────────────────────────────────────────────
 
@@ -202,10 +209,20 @@ const FieldRow: React.FC<{ label: string; children: React.ReactNode }> = ({ labe
 
 // ── Per-component body renderers ─────────────────────────────────────────────
 
+const KeyframeButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+  <button
+    type="button"
+    className="field-keyframe-btn"
+    title="Record keyframe at current frame"
+    onClick={onClick}
+  >◆</button>
+);
+
 const TransformBody: React.FC<{
   comp: TransformComponent;
   onUpdate: (next: TransformComponent) => void;
-}> = ({ comp, onUpdate }) => (
+  onKeyframe?: (property: AnimationProperty, value: Vec3) => void;
+}> = ({ comp, onUpdate, onKeyframe }) => (
   <div className="component-body">
     <FieldRow label="Position">
       <Vec3Field
@@ -214,6 +231,7 @@ const TransformBody: React.FC<{
         precision={3}
         onChange={(v) => onUpdate({ ...comp, transform: { ...comp.transform, position: v } })}
       />
+      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("position", comp.transform.position)} />}
     </FieldRow>
     <FieldRow label="Rotation">
       <Vec3Field
@@ -223,6 +241,7 @@ const TransformBody: React.FC<{
         unit="rad"
         onChange={(v) => onUpdate({ ...comp, transform: { ...comp.transform, rotation: v } })}
       />
+      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("rotation", comp.transform.rotation)} />}
     </FieldRow>
     <FieldRow label="Scale">
       <Vec3Field
@@ -231,9 +250,46 @@ const TransformBody: React.FC<{
         precision={3}
         onChange={(v) => onUpdate({ ...comp, transform: { ...comp.transform, scale: v } })}
       />
+      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("scale", comp.transform.scale)} />}
     </FieldRow>
   </div>
 );
+
+const AnimationBody: React.FC<{
+  comp: AnimationComponent;
+  onRemoveKey: (property: AnimationProperty, frame: number) => void;
+}> = ({ comp, onRemoveKey }) => {
+  if (comp.tracks.length === 0) {
+    return (
+      <div className="component-body">
+        <p className="field-text">No tracks yet. Use ◆ on Transform to record keyframes.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="component-body anim-body">
+      {comp.tracks.map((track) => (
+        <div key={track.property} className="anim-track">
+          <div className="anim-track__header">
+            <span className="anim-track__name">{track.property}</span>
+            <span className="anim-track__count">{track.keyframes.length} keys</span>
+          </div>
+          <div className="anim-track__keys">
+            {track.keyframes.map((k) => (
+              <button
+                key={k.frame}
+                type="button"
+                className="anim-key"
+                title={`Frame ${k.frame} · ${k.value.map((v) => v.toFixed(2)).join(", ")} · click to delete`}
+                onClick={() => onRemoveKey(track.property, k.frame)}
+              >◆ f{k.frame}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const MeshBody: React.FC<{ comp: MeshComponent }> = ({ comp }) => (
   <div className="component-body">
@@ -433,6 +489,7 @@ const COMPONENT_ICON: Record<ComponentType, string> = {
   light: "✦",
   agentMetadata: "◐",
   tag: "▤",
+  animation: "◆",
 };
 
 const COMPONENT_LABEL: Record<ComponentType, string> = {
@@ -443,6 +500,7 @@ const COMPONENT_LABEL: Record<ComponentType, string> = {
   light: "Light",
   agentMetadata: "Agent Metadata",
   tag: "Tag",
+  animation: "Animation",
 };
 
 // ── ComponentCard ─────────────────────────────────────────────────────────────
@@ -453,6 +511,8 @@ type ComponentCardProps = {
   objectId: string;
   onUpdate: (next: Component) => void;
   onRemove: () => void;
+  onKeyframe?: (property: AnimationProperty, value: Vec3) => void;
+  onRemoveKey?: (property: AnimationProperty, frame: number) => void;
 };
 
 const ComponentCard: React.FC<ComponentCardProps> = ({
@@ -461,6 +521,8 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
   objectId,
   onUpdate,
   onRemove,
+  onKeyframe,
+  onRemoveKey,
 }) => {
   const [open, setOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -480,6 +542,7 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
           <TransformBody
             comp={component}
             onUpdate={(next) => onUpdate(next)}
+            onKeyframe={onKeyframe}
           />
         );
       case "mesh":
@@ -514,6 +577,13 @@ const ComponentCard: React.FC<ComponentCardProps> = ({
               <span className="field-text">{component.labels.join(", ") || "—"}</span>
             </FieldRow>
           </div>
+        );
+      case "animation":
+        return (
+          <AnimationBody
+            comp={component}
+            onRemoveKey={(property, frame) => onRemoveKey?.(property, frame)}
+          />
         );
     }
   };
@@ -576,11 +646,17 @@ const findSelected = (scene: Scene3D, id: string | null): GameObject | null =>
 
 export type InspectorProps = {
   scene: Scene3D;
+  currentFrame: number;
   onSceneChange: (description: string, updater: (s: Scene3D) => Scene3D) => void;
   onAddComponentOpen: () => void;
 };
 
-export const Inspector: React.FC<InspectorProps> = ({ scene, onSceneChange, onAddComponentOpen }) => {
+export const Inspector: React.FC<InspectorProps> = ({
+  scene,
+  currentFrame,
+  onSceneChange,
+  onAddComponentOpen,
+}) => {
   const { state } = useStudioState();
   const selected = findSelected(scene, state.selectedId);
 
@@ -597,6 +673,22 @@ export const Inspector: React.FC<InspectorProps> = ({ scene, onSceneChange, onAd
     onSceneChange(
       `Remove ${COMPONENT_LABEL[type] ?? type}`,
       (s) => removeComponentAtIndex(s, selected.id, index),
+    );
+  };
+
+  const handleKeyframe = (property: AnimationProperty, value: Vec3) => {
+    if (!selected) return;
+    onSceneChange(
+      `Keyframe ${property} @ f${currentFrame}`,
+      (s) => setKeyframe(s, selected.id, property, currentFrame, value),
+    );
+  };
+
+  const handleRemoveKey = (property: AnimationProperty, frame: number) => {
+    if (!selected) return;
+    onSceneChange(
+      `Remove key ${property} @ f${frame}`,
+      (s) => removeKeyframe(s, selected.id, property, frame),
     );
   };
 
@@ -624,6 +716,8 @@ export const Inspector: React.FC<InspectorProps> = ({ scene, onSceneChange, onAd
                   objectId={selected.id}
                   onUpdate={(next) => handleUpdate(idx, next)}
                   onRemove={() => handleRemove(idx, comp.type)}
+                  onKeyframe={handleKeyframe}
+                  onRemoveKey={handleRemoveKey}
                 />
               ))}
             </div>
