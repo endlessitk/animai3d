@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import type { ToolId, WorkspaceId } from "./studioState";
-import { TOOLS, useStudioState } from "./studioState";
+import { SHADING_OPTIONS, TOOLS, TRANSFORM_REFERENCE_OPTIONS, useStudioState } from "./studioState";
 
 /**
  * Global hotkey listener — DESIGN_LANGUAGE §10.1.
@@ -129,6 +129,34 @@ export const useGlobalHotkeys = (handlers: GlobalHotkeyHandlers = {}) => {
       if (event.key === "A" && event.shiftKey) {
         event.preventDefault();
         handlers.onAddObject?.();
+        return;
+      }
+
+      // Z → cycle shading mode (DESIGN_LANGUAGE §10.1)
+      if (event.key.toLowerCase() === "z" && !event.shiftKey) {
+        event.preventDefault();
+        const ids = SHADING_OPTIONS.map((o) => o.id);
+        const idx = ids.indexOf(studio.state.shading);
+        const next = ids[(idx + 1) % ids.length];
+        studio.setShading(next);
+        return;
+      }
+
+      // X → toggle snap magnet
+      if (event.key.toLowerCase() === "x") {
+        event.preventDefault();
+        studio.toggleSnapMagnet();
+        return;
+      }
+
+      // , / . → cycle Transform Reference
+      if (event.key === "," || event.key === ".") {
+        event.preventDefault();
+        const ids = TRANSFORM_REFERENCE_OPTIONS.map((o) => o.id);
+        const idx = ids.indexOf(studio.state.transformReference);
+        const delta = event.key === "." ? 1 : -1;
+        const nextIdx = (idx + delta + ids.length) % ids.length;
+        studio.setTransformReference(ids[nextIdx]);
         return;
       }
 

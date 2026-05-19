@@ -17,6 +17,7 @@ import {
   type Vec3,
   IDENTITY_TRANSFORM_3D,
 } from "./schema";
+import type { ShadingMode, SnapMode, TransformReference } from "../state/studioState";
 
 // ── Gizmo mode ────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,49 @@ const renderGeometry = (primitive: MeshPrimitive): React.ReactElement => {
           ]}
         />
       );
+  }
+};
+
+// ── Shading override ─────────────────────────────────────────────────────────
+
+const materialColor = (mat: MaterialDef | undefined): string => {
+  if (!mat) return "#888888";
+  return mat.color;
+};
+
+const renderShadedMaterial = (
+  material: MaterialComponent | undefined,
+  shading: ShadingMode,
+): React.ReactElement => {
+  switch (shading) {
+    case "wireframe":
+      return <meshBasicMaterial color={materialColor(material?.material)} wireframe />;
+    case "unlit":
+      return <meshBasicMaterial color={materialColor(material?.material)} />;
+    case "normals":
+      return <meshNormalMaterial />;
+    case "xray":
+      return (
+        <meshBasicMaterial
+          color={materialColor(material?.material)}
+          transparent
+          opacity={0.3}
+          depthWrite={false}
+        />
+      );
+    case "uv":
+      // MVP fallback: white wireframe — proper UV checker shader is V2.
+      return <meshBasicMaterial color="#ffffff" wireframe />;
+    case "agentHeatmap":
+      // MVP fallback: cyan tint — proper heatmap shader is V2.
+      return <meshBasicMaterial color="#4a9bd4" wireframe />;
+    case "solid":
+    case "material":
+    case "lit":
+    default:
+      return material
+        ? renderMaterial(material.material)
+        : <meshStandardMaterial color="#888888" />;
   }
 };
 
@@ -140,6 +184,7 @@ type GameObjectNodeProps = {
   object: GameObject;
   isSelected: boolean;
   isMultiSelected: boolean;
+  shadingMode: ShadingMode;
   onSelect: (id: string, addToSelection: boolean) => void;
   onRegisterGroup: (id: string, group: THREE.Group | null) => void;
 };
@@ -148,6 +193,7 @@ const GameObjectNode: React.FC<GameObjectNodeProps> = ({
   object,
   isSelected,
   isMultiSelected,
+  shadingMode,
   onSelect,
   onRegisterGroup,
 }) => {
@@ -184,9 +230,7 @@ const GameObjectNode: React.FC<GameObjectNodeProps> = ({
           }}
         >
           {renderGeometry(mesh.primitive)}
-          {material
-            ? renderMaterial(material.material)
-            : <meshStandardMaterial color="#888888" />}
+          {renderShadedMaterial(material, shadingMode)}
         </mesh>
       )}
       {light && renderLight(light)}
@@ -240,6 +284,10 @@ type SceneContentProps = {
   selectedId: string | null;
   selectedIds: string[];
   gizmoMode: GizmoMode | undefined;
+  shadingMode: ShadingMode;
+  snap: SnapMode;
+  snapMagnet: boolean;
+  transformReference: TransformReference;
   onSelect: (id: string | null, addToSelection?: boolean) => void;
   onTransformCommit: (id: string, transform: Transform3D) => void;
   showHelpers: boolean;
@@ -250,6 +298,10 @@ const SceneContent: React.FC<SceneContentProps> = ({
   selectedId,
   selectedIds,
   gizmoMode,
+  shadingMode,
+  snap,
+  snapMagnet,
+  transformReference,
   onSelect,
   onTransformCommit,
   showHelpers,
@@ -326,6 +378,7 @@ const SceneContent: React.FC<SceneContentProps> = ({
           object={obj}
           isSelected={obj.id === selectedId}
           isMultiSelected={selectedIds.includes(obj.id)}
+          shadingMode={shadingMode}
           onSelect={(id, add) => onSelect(id, add)}
           onRegisterGroup={registerGroup}
         />
@@ -335,6 +388,10 @@ const SceneContent: React.FC<SceneContentProps> = ({
         <TransformControls
           object={tcTarget}
           mode={gizmoMode}
+          space={transformReference === "local" || transformReference === "parent" ? "local" : "world"}
+          translationSnap={snapMagnet && snap === "grid" ? 1 : null}
+          rotationSnap={snapMagnet && (snap === "grid" || snap === "angle") ? Math.PI / 12 : null}
+          scaleSnap={snapMagnet ? 0.1 : null}
           onMouseDown={() => setIsDragging(true)}
           onMouseUp={handleTransformMouseUp}
         />
@@ -350,6 +407,10 @@ export type SceneRenderer3DProps = {
   selectedId: string | null;
   selectedIds: string[];
   gizmoMode: GizmoMode | undefined;
+  shadingMode: ShadingMode;
+  snap: SnapMode;
+  snapMagnet: boolean;
+  transformReference: TransformReference;
   onSelect: (id: string | null, addToSelection?: boolean) => void;
   onTransformCommit: (id: string, transform: Transform3D) => void;
   showHelpers?: boolean;
@@ -360,6 +421,10 @@ export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
   selectedId,
   selectedIds,
   gizmoMode,
+  shadingMode,
+  snap,
+  snapMagnet,
+  transformReference,
   onSelect,
   onTransformCommit,
   showHelpers = true,
@@ -375,6 +440,10 @@ export const SceneRenderer3D: React.FC<SceneRenderer3DProps> = ({
       selectedId={selectedId}
       selectedIds={selectedIds}
       gizmoMode={gizmoMode}
+      shadingMode={shadingMode}
+      snap={snap}
+      snapMagnet={snapMagnet}
+      transformReference={transformReference}
       onSelect={onSelect}
       onTransformCommit={onTransformCommit}
       showHelpers={showHelpers}

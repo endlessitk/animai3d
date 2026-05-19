@@ -156,6 +156,10 @@ export const AppShell: React.FC<AppShellProps> = ({
             selectedId={studio.state.selectedId}
             selectedIds={studio.state.selectedIds}
             gizmoMode={gizmoMode}
+            shadingMode={studio.state.shading}
+            snap={studio.state.snap}
+            snapMagnet={studio.state.snapMagnet}
+            transformReference={studio.state.transformReference}
             onSelect={handleViewportSelect}
             onTransformCommit={handleTransformCommit}
           />
