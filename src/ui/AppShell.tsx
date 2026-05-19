@@ -231,7 +231,11 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
       </div>
 
-      <AgentWorkbench transactions={transactions} />
+      <AgentWorkbench
+        scene={scene}
+        transactions={transactions}
+        onSceneChange={onSceneChange}
+      />
 
       {studio.state.contentBrowserOpen && <ContentBrowser />}
 

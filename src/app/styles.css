@@ -1804,3 +1804,193 @@ input:focus, select:focus, textarea:focus {
   text-align: center;
 }
 
+/* ── Sprint 8 — Agent Workbench (chat / tool log / scene diff) ──── */
+
+/* Chat */
+.agent-chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: 100%;
+}
+.agent-chat__list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+  max-height: 280px;
+}
+.agent-chat__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui);
+  line-height: 1.5;
+}
+.agent-chat__hint em {
+  color: var(--text-secondary);
+  font-style: normal;
+}
+.agent-chat__msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  border-left: 2px solid var(--border-panel);
+  background: var(--bg-panel-2);
+}
+.agent-chat__msg--user {
+  border-left-color: var(--text-secondary);
+}
+.agent-chat__msg--agent {
+  border-left-color: var(--accent-active);
+}
+.agent-chat__msg--system {
+  border-left-color: var(--text-muted);
+  background: transparent;
+  color: var(--text-muted);
+}
+.agent-chat__role {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.agent-chat__text {
+  font-size: var(--font-ui);
+  line-height: 1.4;
+}
+.agent-chat__input-row {
+  display: flex;
+  gap: var(--space-2);
+}
+.agent-chat__input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border-panel);
+  color: var(--text-primary);
+  font-size: var(--font-ui);
+  padding: 4px 6px;
+  outline: none;
+  min-width: 0;
+}
+.agent-chat__input:focus {
+  border-color: var(--accent-active);
+}
+.agent-chat__send {
+  background: var(--accent-active);
+  border: none;
+  color: #000;
+  cursor: pointer;
+  font-size: var(--font-ui);
+  padding: 4px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.agent-chat__send:disabled {
+  background: var(--bg-panel-2);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Tool log */
+.tool-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tool-log__row {
+  display: grid;
+  grid-template-columns: 8px 110px 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: 3px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  background: var(--bg-panel-2);
+  color: var(--text-secondary);
+}
+.tool-log__dot {
+  width: 6px;
+  height: 6px;
+  background: var(--text-muted);
+}
+.tool-log__row.is-queued .tool-log__dot { background: var(--text-muted); }
+.tool-log__row.is-streaming .tool-log__dot { background: var(--accent-active); }
+.tool-log__row.is-complete .tool-log__dot { background: var(--accent-success, #7ab841); }
+.tool-log__row.is-errored .tool-log__dot { background: var(--accent-error, #e74c3c); }
+.tool-log__name {
+  color: var(--text-primary);
+}
+.tool-log__args {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-log__result {
+  color: var(--accent-success, #7ab841);
+}
+
+/* Scene diff */
+.scene-diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.scene-diff__summary {
+  font-size: var(--font-ui);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-panel);
+  padding-bottom: var(--space-2);
+}
+.scene-diff__changes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.scene-diff__line {
+  padding: 2px 6px;
+  background: var(--bg-panel-2);
+}
+.scene-diff__line--add { color: var(--accent-success, #7ab841); }
+.scene-diff__line--del { color: var(--accent-error, #e74c3c); }
+.scene-diff__line--mod { color: var(--accent-active); }
+.scene-diff__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+.scene-diff__btn {
+  border: 1px solid var(--border-panel);
+  background: var(--bg-panel-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--font-ui);
+  padding: 4px 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.scene-diff__btn--reject:hover {
+  border-color: var(--accent-error, #e74c3c);
+  color: var(--accent-error, #e74c3c);
+}
+.scene-diff__btn--apply {
+  background: var(--accent-active);
+  border-color: var(--accent-active);
+  color: #000;
+}
+.scene-diff__btn--apply:hover {
+  background: var(--accent-active);
+  filter: brightness(1.1);
+}
+

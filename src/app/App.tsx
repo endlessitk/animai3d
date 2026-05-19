@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { StudioStateProvider } from "../state/studioState";
+import { AgentSessionProvider } from "../agent/agentSession";
 import { AppShell } from "../ui/AppShell";
 import { defaultProject, defaultScene3D } from "../scene/defaultData3d";
 import type { Scene3D, StudioProject } from "../scene/schema";
@@ -39,7 +40,8 @@ export const App: React.FC = () => {
 
   return (
     <StudioStateProvider>
-      <AppShell
+      <AgentSessionProvider>
+        <AppShell
         project={project}
         scene={scene}
         transactions={transactions}
@@ -54,7 +56,8 @@ export const App: React.FC = () => {
           resetTransactionCounter();
         }}
         onExportScene={() => downloadJson("scene3d.json", scene)}
-      />
+        />
+      </AgentSessionProvider>
     </StudioStateProvider>
   );
 };
