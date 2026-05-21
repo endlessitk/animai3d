@@ -2,6 +2,7 @@ node_modules/
 dist/
 out/
 .remotion/
+.env.local
 agent-tasks/*.json
 !agent-tasks/.gitkeep
 public/uploads/*
