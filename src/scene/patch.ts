@@ -177,6 +177,133 @@ export const describeSceneOperation = (operation: SceneOperation): string => {
   }
 };
 
+// ── Field-level delta (before -> after) ──────────────────────────────────────
+
+export type OperationDelta = {
+  /** Stable label like "Cube · transform.position" — anchored to object name. */
+  label: string;
+  /** Pre-state rendered string. "—" when there is no prior value. */
+  before: string;
+  /** Post-state rendered string. */
+  after: string;
+  /** Visual kind hint for diff styling. */
+  kind: "add" | "del" | "mod";
+};
+
+const formatValue = (value: AnimatableValue | undefined | null): string => {
+  if (value === undefined || value === null) return "—";
+  if (typeof value === "number") return Number.isInteger(value) ? `${value}` : value.toFixed(3);
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return `[${value.map((v) => v.toFixed(2)).join(", ")}]`;
+  return JSON.stringify(value);
+};
+
+const resolveObjectName = (scene: Scene3D, id: string | undefined): string => {
+  if (!id) return "—";
+  const obj = scene.objects.find((o) => o.id === id);
+  return obj?.name ?? id;
+};
+
+const readAnimationValueAt = (
+  obj: GameObject | undefined,
+  path: AnimationPath,
+  frame: number,
+): AnimatableValue | null => {
+  if (!obj) return null;
+  const anim = findComponent(obj, "animation");
+  const track = anim?.tracks.find((t) => (t.path ?? `transform.${t.property}`) === path);
+  if (!track || track.keyframes.length === 0) return null;
+  // Exact-frame match first, otherwise closest-before for context display.
+  const exact = track.keyframes.find((k) => k.frame === frame);
+  if (exact) return exact.value;
+  const before = [...track.keyframes].reverse().find((k) => k.frame <= frame);
+  return before?.value ?? track.keyframes[0].value;
+};
+
+const readTransformField = (
+  obj: GameObject | undefined,
+  field: "position" | "rotation" | "scale",
+): Vec3 | null => {
+  const t = obj && findComponent(obj, "transform");
+  return t ? t.transform[field] : null;
+};
+
+export const describeOperationDelta = (scene: Scene3D, operation: SceneOperation): OperationDelta => {
+  const obj = "objectId" in operation
+    ? scene.objects.find((o) => o.id === operation.objectId)
+    : undefined;
+  const objName = "objectId" in operation
+    ? resolveObjectName(scene, operation.objectId)
+    : operation.type === "object.add"
+      ? operation.object?.name ?? operation.kind ?? "new object"
+      : "—";
+
+  switch (operation.type) {
+    case "object.add":
+      return {
+        label: `${objName} · object.add`,
+        before: "—",
+        after: operation.object?.name ?? operation.kind ?? "new object",
+        kind: "add",
+      };
+    case "object.rename":
+      return {
+        label: `${objName} · object.rename`,
+        before: obj?.name ?? "—",
+        after: operation.name,
+        kind: "mod",
+      };
+    case "transform.setField": {
+      const before = readTransformField(obj, operation.field);
+      return {
+        label: `${objName} · transform.${operation.field}`,
+        before: formatValue(before),
+        after: formatValue(operation.value),
+        kind: "mod",
+      };
+    }
+    case "animation.setKeyframe": {
+      const before = readAnimationValueAt(obj, operation.path, operation.frame);
+      return {
+        label: `${objName} · ${operation.path} @ f${operation.frame}`,
+        before: formatValue(before),
+        after: formatValue(operation.value),
+        kind: before === null ? "add" : "mod",
+      };
+    }
+    case "material.setColor": {
+      const mat = obj && findComponent(obj, "material");
+      return {
+        label: `${objName} · material.color`,
+        before: mat?.material.color ?? "—",
+        after: operation.color,
+        kind: "mod",
+      };
+    }
+    case "light.set": {
+      const light = obj && findComponent(obj, "light");
+      const before = light ? (light as Record<string, unknown>)[operation.field as string] : undefined;
+      return {
+        label: `${objName} · light.${String(operation.field)}`,
+        before: formatValue(before as AnimatableValue | undefined),
+        after: formatValue(operation.value as AnimatableValue),
+        kind: "mod",
+      };
+    }
+    case "camera.set": {
+      const cam = obj && findComponent(obj, "camera");
+      const before = cam ? (cam as Record<string, unknown>)[operation.field as string] : undefined;
+      return {
+        label: `${objName} · camera.${String(operation.field)}`,
+        before: formatValue(before as AnimatableValue | undefined),
+        after: formatValue(operation.value as AnimatableValue),
+        kind: "mod",
+      };
+    }
+  }
+};
+
 export const createScenePatch = (
   summary: string,
   operations: SceneOperation[],
