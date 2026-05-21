@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { Grid, OrbitControls, PerspectiveCamera, TransformControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
@@ -18,7 +18,7 @@ import {
   type Vec3,
   IDENTITY_TRANSFORM_3D,
 } from "./schema";
-import { sampleAnimation } from "./animationSampler";
+import { sampleAnimation, sampledColor, sampledNumber, sampledVec3 } from "./animationSampler";
 import type { ShadingMode, SnapMode, TransformReference } from "../state/studioState";
 
 // ── Gizmo mode ────────────────────────────────────────────────────────────────
@@ -69,6 +69,17 @@ const renderGeometry = (primitive: MeshPrimitive): React.ReactElement => {
 const materialColor = (mat: MaterialDef | undefined): string => {
   if (!mat) return "#888888";
   return mat.color;
+};
+
+const withSampledColor = (
+  material: MaterialComponent | undefined,
+  color: string | undefined,
+): MaterialComponent | undefined => {
+  if (!material || !color) return material;
+  return {
+    ...material,
+    material: { ...material.material, color } as MaterialDef,
+  };
 };
 
 const renderShadedMaterial = (
@@ -187,6 +198,7 @@ type GameObjectNodeProps = {
   isSelected: boolean;
   isMultiSelected: boolean;
   shadingMode: ShadingMode;
+  currentFrame: number;
   onSelect: (id: string, addToSelection: boolean) => void;
   onRegisterGroup: (id: string, group: THREE.Group | null) => void;
 };
@@ -196,15 +208,30 @@ const GameObjectNode: React.FC<GameObjectNodeProps> = ({
   isSelected,
   isMultiSelected,
   shadingMode,
+  currentFrame,
   onSelect,
   onRegisterGroup,
 }) => {
   if (!object.visible) return null;
 
-  const transform = transformOf(object.components);
+  const anim = findComponent(object, "animation") as AnimationComponent | undefined;
+  const sampled = anim ? sampleAnimation(anim, currentFrame) : {};
+  const baseTransform = transformOf(object.components);
+  const transform: Transform3D = {
+    position: sampledVec3(sampled, "transform.position") ?? baseTransform.position,
+    rotation: sampledVec3(sampled, "transform.rotation") ?? baseTransform.rotation,
+    scale: sampledVec3(sampled, "transform.scale") ?? baseTransform.scale,
+  };
   const mesh = findComponent(object, "mesh") as MeshComponent | undefined;
-  const material = findComponent(object, "material") as MaterialComponent | undefined;
-  const light = findComponent(object, "light") as LightComponent | undefined;
+  const material = withSampledColor(
+    findComponent(object, "material") as MaterialComponent | undefined,
+    sampledColor(sampled, "material.color"),
+  );
+  const lightBase = findComponent(object, "light") as LightComponent | undefined;
+  const sampledIntensity = sampledNumber(sampled, "light.intensity");
+  const light = lightBase && sampledIntensity !== undefined
+    ? { ...lightBase, intensity: sampledIntensity }
+    : lightBase;
 
   const refCallback = useCallback(
     (group: THREE.Group | null) => {
@@ -277,46 +304,6 @@ const resolveActiveCamera = (scene: Scene3D): ResolvedCamera => {
     near: cam.near ?? 0.1,
     far: cam.far ?? 200,
   };
-};
-
-// ── Animation applier (runs inside Canvas, mutates groups every frame) ───────
-
-type AnimationApplierProps = {
-  scene: Scene3D;
-  groupRegistry: React.MutableRefObject<Map<string, THREE.Group>>;
-  currentFrame: number;
-  suppressId: string | null;
-};
-
-const AnimationApplier: React.FC<AnimationApplierProps> = ({
-  scene,
-  groupRegistry,
-  currentFrame,
-  suppressId,
-}) => {
-  const frameRef = useRef(currentFrame);
-  frameRef.current = currentFrame;
-  const suppressRef = useRef(suppressId);
-  suppressRef.current = suppressId;
-
-  useFrame(() => {
-    const frame = frameRef.current;
-    const suppress = suppressRef.current;
-    for (const obj of scene.objects) {
-      if (obj.id === suppress) continue;
-      const anim = obj.components.find((c) => c.type === "animation") as
-        | AnimationComponent
-        | undefined;
-      if (!anim || anim.tracks.length === 0) continue;
-      const group = groupRegistry.current.get(obj.id);
-      if (!group) continue;
-      const sampled = sampleAnimation(anim, frame);
-      if (sampled.position) group.position.set(sampled.position[0], sampled.position[1], sampled.position[2]);
-      if (sampled.rotation) group.rotation.set(sampled.rotation[0], sampled.rotation[1], sampled.rotation[2]);
-      if (sampled.scale) group.scale.set(sampled.scale[0], sampled.scale[1], sampled.scale[2]);
-    }
-  });
-  return null;
 };
 
 // ── Inner canvas scene ────────────────────────────────────────────────────────
@@ -423,6 +410,7 @@ const SceneContent: React.FC<SceneContentProps> = ({
           isSelected={obj.id === selectedId}
           isMultiSelected={selectedIds.includes(obj.id)}
           shadingMode={shadingMode}
+          currentFrame={currentFrame}
           onSelect={(id, add) => onSelect(id, add)}
           onRegisterGroup={registerGroup}
         />
@@ -440,13 +428,6 @@ const SceneContent: React.FC<SceneContentProps> = ({
           onMouseUp={handleTransformMouseUp}
         />
       )}
-
-      <AnimationApplier
-        scene={scene}
-        groupRegistry={groupRegistry}
-        currentFrame={currentFrame}
-        suppressId={isDragging ? selectedId : null}
-      />
     </>
   );
 };
