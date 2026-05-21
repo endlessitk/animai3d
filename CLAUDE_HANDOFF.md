@@ -103,7 +103,7 @@ Run from `C:\Projects\agentic-3d-studio`:
 
 ```powershell
 pnpm install                 # standalone install (no longer needs whale-spot)
-pnpm dev                     # vite dev server on http://127.0.0.1:5173
+pnpm dev                     # vite dev server on http://127.0.0.1:5190 (strictPort)
 pnpm build                   # production build (Sprint 0 verified clean)
 pnpm typecheck               # tsc --noEmit (Sprint 0 verified clean)
 pnpm task:new "prompt"       # create agent task JSON
