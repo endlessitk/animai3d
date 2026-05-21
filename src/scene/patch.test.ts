@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { applySceneOperation, applyScenePatch, createScenePatch, validateScenePatch } from "./patch";
+import {
+  applySceneOperation,
+  applyScenePatch,
+  createScenePatch,
+  describeOperationDelta,
+  validateScenePatch,
+} from "./patch";
 import { defaultScene3D } from "./defaultData3d";
 import { findComponent } from "./schema";
 
@@ -92,5 +98,79 @@ describe("scene patch operations", () => {
     const next = applyScenePatch(defaultScene3D, patch);
     const cube = next.objects.find((object) => object.id === "go-cube-primary");
     expect(findComponent(cube!, "agentMetadata")?.createdBy?.providerId).toBe("mock");
+  });
+
+  it("is idempotent when the same patch is applied twice in a row", () => {
+    const patch = createScenePatch("Set position once", [
+      { type: "transform.setField", objectId: "go-cube-primary", field: "position", value: [1, 2, 3] },
+    ]);
+    const once = applyScenePatch(defaultScene3D, patch);
+    const twice = applyScenePatch(once, patch);
+    expect(findComponent(once.objects.find((o) => o.id === "go-cube-primary")!, "transform")?.transform.position).toEqual([1, 2, 3]);
+    expect(findComponent(twice.objects.find((o) => o.id === "go-cube-primary")!, "transform")?.transform.position).toEqual([1, 2, 3]);
+  });
+
+  it("validateScenePatch classifies a clean patch as not-blocked with no error messages", () => {
+    const patch = createScenePatch("Move only", [
+      { type: "transform.setField", objectId: "go-cube-primary", field: "position", value: [0, 1, 0] },
+    ]);
+    const validation = validateScenePatch(defaultScene3D, patch);
+    expect(validation.blocked).toBe(false);
+    expect(validation.messages).toEqual([]);
+  });
+});
+
+// ── Day 2: field-level delta helper ─────────────────────────────────────────
+
+describe("describeOperationDelta", () => {
+  it("renders material.color before -> after using the live scene", () => {
+    const delta = describeOperationDelta(defaultScene3D, {
+      type: "material.setColor",
+      objectId: "go-cube-primary",
+      color: "#e74c3c",
+    });
+    const cube = defaultScene3D.objects.find((o) => o.id === "go-cube-primary")!;
+    const currentColor = findComponent(cube, "material")?.material.color;
+    expect(delta.before).toBe(currentColor);
+    expect(delta.after).toBe("#e74c3c");
+    expect(delta.label).toContain("material.color");
+    expect(delta.kind).toBe("mod");
+  });
+
+  it("renders transform.setField with formatted Vec3 before -> after", () => {
+    const delta = describeOperationDelta(defaultScene3D, {
+      type: "transform.setField",
+      objectId: "go-cube-primary",
+      field: "position",
+      value: [1, 2, 3],
+    });
+    // default cube position is [0, 0.5, 0]
+    expect(delta.before).toBe("[0.00, 0.50, 0.00]");
+    expect(delta.after).toBe("[1.00, 2.00, 3.00]");
+  });
+
+  it("marks animation.setKeyframe as add when no prior track exists", () => {
+    const delta = describeOperationDelta(defaultScene3D, {
+      type: "animation.setKeyframe",
+      objectId: "go-cube-primary",
+      path: "transform.position",
+      frame: 10,
+      value: [0, 3, 0],
+    });
+    expect(delta.kind).toBe("add");
+    expect(delta.before).toBe("—");
+    expect(delta.after).toBe("[0.00, 3.00, 0.00]");
+  });
+
+  it("formats light.set scalar field as before -> after", () => {
+    const delta = describeOperationDelta(defaultScene3D, {
+      type: "light.set",
+      objectId: "go-light-key",
+      field: "intensity",
+      value: 2.5,
+    });
+    expect(delta.label).toContain("light.intensity");
+    expect(delta.after).toBe("2.500");
+    expect(delta.kind).toBe("mod");
   });
 });
