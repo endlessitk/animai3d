@@ -1,7 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useReducer } from "react";
-import type { Scene3D } from "../scene/schema";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import type { ScenePatch } from "../scene/patch";
 
 export type ChatRole = "user" | "agent" | "system";
 
@@ -16,7 +14,6 @@ export type ToolCallStatus = "queued" | "streaming" | "complete" | "errored";
 
 export type ToolCall = {
   id: string;
-  /** Tool name, e.g. "read_scene", "add_animation_component". */
   name: string;
   args: Record<string, unknown>;
   status: ToolCallStatus;
@@ -24,23 +21,12 @@ export type ToolCall = {
   timestamp: string;
 };
 
-export type SceneDiff = {
-  id: string;
-  /** Human-readable summary, e.g. "+ AnimationComponent on Cube · 3 keyframes". */
-  summary: string;
-  /** Bullet lines for the diff card. */
-  changes: string[];
-  /** Pure function that produces the next scene when Apply is clicked. */
-  apply: (s: Scene3D) => Scene3D;
-};
-
-// ── State ─────────────────────────────────────────────────────────────────────
+export type SceneDiff = ScenePatch;
 
 export type AgentSessionState = {
   messages: ChatMessage[];
   toolCalls: ToolCall[];
   pendingDiff: SceneDiff | null;
-  /** True between user submit and final agent reply. */
   busy: boolean;
 };
 
@@ -50,8 +36,6 @@ const INITIAL_STATE: AgentSessionState = {
   pendingDiff: null,
   busy: false,
 };
-
-// ── Actions ───────────────────────────────────────────────────────────────────
 
 type Action =
   | { type: "append-message"; message: ChatMessage }
@@ -70,8 +54,8 @@ const reducer = (state: AgentSessionState, action: Action): AgentSessionState =>
     case "update-tool-call":
       return {
         ...state,
-        toolCalls: state.toolCalls.map((c) =>
-          c.id === action.id ? { ...c, ...action.patch } : c,
+        toolCalls: state.toolCalls.map((call) =>
+          call.id === action.id ? { ...call, ...action.patch } : call,
         ),
       };
     case "set-pending-diff":
@@ -82,8 +66,6 @@ const reducer = (state: AgentSessionState, action: Action): AgentSessionState =>
       return INITIAL_STATE;
   }
 };
-
-// ── Context ───────────────────────────────────────────────────────────────────
 
 let _idCounter = 0;
 const nextId = () => `${Date.now()}-${++_idCounter}`;
@@ -114,20 +96,17 @@ export const AgentSessionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return message;
   }, []);
 
-  const appendToolCall = useCallback(
-    (name: string, args: Record<string, unknown>): ToolCall => {
-      const call: ToolCall = {
-        id: nextId(),
-        name,
-        args,
-        status: "queued",
-        timestamp: new Date().toISOString(),
-      };
-      dispatch({ type: "append-tool-call", call });
-      return call;
-    },
-    [],
-  );
+  const appendToolCall = useCallback((name: string, args: Record<string, unknown>): ToolCall => {
+    const call: ToolCall = {
+      id: nextId(),
+      name,
+      args,
+      status: "queued",
+      timestamp: new Date().toISOString(),
+    };
+    dispatch({ type: "append-tool-call", call });
+    return call;
+  }, []);
 
   const updateToolCall = useCallback((id: string, patch: Partial<ToolCall>) => {
     dispatch({ type: "update-tool-call", id, patch });
