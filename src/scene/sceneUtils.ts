@@ -1,6 +1,7 @@
 import type {
   AnimationComponent,
-  AnimationProperty,
+  AnimationPath,
+  AnimatableValue,
   Component,
   ComponentType,
   EasingName3D,
@@ -158,6 +159,9 @@ export type AddObjectKind =
 
 let _objCounter = 0;
 
+const trackPath = (track: { path?: AnimationPath; property?: string }): AnimationPath | string =>
+  track.path ?? (track.property ? `transform.${track.property}` : "");
+
 function makeTransform(position: Vec3): Extract<Component, { type: "transform" }> {
   return { type: "transform", transform: { position, rotation: [0, 0, 0], scale: [1, 1, 1] } };
 }
@@ -205,9 +209,9 @@ const ensureAnimationComponent = (obj: GameObject): GameObject => {
 };
 
 const upsertKeyframe = (
-  track: { property: AnimationProperty; keyframes: Keyframe3D[] },
+  track: { path: AnimationPath; keyframes: Keyframe3D[] },
   frame: number,
-  value: Vec3,
+  value: AnimatableValue,
   easing: EasingName3D,
 ) => {
   const idx = track.keyframes.findIndex((k) => k.frame === frame);
@@ -222,9 +226,9 @@ const upsertKeyframe = (
 export const setKeyframe = (
   scene: Scene3D,
   id: string,
-  property: AnimationProperty,
+  path: AnimationPath,
   frame: number,
-  value: Vec3,
+  value: AnimatableValue,
   easing: EasingName3D = "linear",
 ): Scene3D => {
   const withAnim = mapObj(scene, id, ensureAnimationComponent);
@@ -232,20 +236,20 @@ export const setKeyframe = (
     ...o,
     components: o.components.map((c) => {
       if (c.type !== "animation") return c;
-      const existing = c.tracks.find((t) => t.property === property);
+      const existing = c.tracks.find((t) => trackPath(t) === path);
       if (existing) {
         return {
           ...c,
           tracks: c.tracks.map((t) =>
-            t.property === property
-              ? { ...t, keyframes: upsertKeyframe(t, frame, value, easing) }
+            trackPath(t) === path
+              ? { ...t, path, keyframes: upsertKeyframe({ path, keyframes: t.keyframes }, frame, value, easing) }
               : t,
           ),
         };
       }
       return {
         ...c,
-        tracks: [...c.tracks, { property, keyframes: [{ frame, value, easing }] }],
+        tracks: [...c.tracks, { path, keyframes: [{ frame, value, easing }] }],
       };
     }),
   }));
@@ -254,7 +258,7 @@ export const setKeyframe = (
 export const removeKeyframe = (
   scene: Scene3D,
   id: string,
-  property: AnimationProperty,
+  path: AnimationPath,
   frame: number,
 ): Scene3D =>
   mapObj(scene, id, (o) => ({
@@ -265,7 +269,7 @@ export const removeKeyframe = (
         ...c,
         tracks: c.tracks
           .map((t) =>
-            t.property === property
+            trackPath(t) === path
               ? { ...t, keyframes: t.keyframes.filter((k) => k.frame !== frame) }
               : t,
           )
