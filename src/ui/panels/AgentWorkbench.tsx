@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useStudioState } from "../../state/studioState";
 import { useAgentSession } from "../../agent/agentSession";
 import { runMockAgent } from "../../agent/mockAgent";
-import type { Scene3D } from "../../scene/schema";
-import type { Transaction } from "../../state/transactions";
+import { applyScenePatch, describeSceneOperation, validateScenePatch } from "../../scene/patch";
+import type { Scene3D, StudioProject } from "../../scene/schema";
+import type { Transaction, TransactionSource } from "../../state/transactions";
 
 // ── Accordion shell ───────────────────────────────────────────────────────────
 
@@ -29,15 +30,24 @@ const ACCORDION_META: Array<{ id: AccordionId; label: string }> = [
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export type AgentWorkbenchProps = {
+  project: StudioProject;
   scene: Scene3D;
+  currentFrame: number;
   transactions?: Transaction[];
-  onSceneChange: (description: string, updater: (s: Scene3D) => Scene3D) => void;
+  onSceneChange: (
+    description: string,
+    updater: (s: Scene3D) => Scene3D,
+    source?: TransactionSource,
+    metadata?: Partial<Omit<Transaction, "id" | "description" | "timestamp" | "source">>,
+  ) => void;
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const AgentWorkbench: React.FC<AgentWorkbenchProps> = ({
+  project,
   scene,
+  currentFrame,
   transactions = [],
   onSceneChange,
 }) => {
@@ -65,8 +75,10 @@ export const AgentWorkbench: React.FC<AgentWorkbenchProps> = ({
     try {
       const diff = await runMockAgent({
         prompt,
+        project,
         scene,
         selectedId: studioState.selectedId,
+        currentFrame,
         appendToolCall: session.appendToolCall,
         updateToolCall: session.updateToolCall,
         appendAgentMessage: (text) => session.appendMessage("agent", text),
@@ -77,15 +89,34 @@ export const AgentWorkbench: React.FC<AgentWorkbenchProps> = ({
     } finally {
       session.setBusy(false);
     }
-  }, [input, scene, session, studioState.selectedId]);
+  }, [currentFrame, input, project, scene, session, studioState.selectedId]);
 
   const handleApply = useCallback(() => {
     const diff = session.state.pendingDiff;
     if (!diff) return;
-    onSceneChange(`[agent] ${diff.summary}`, diff.apply);
+    const validation = validateScenePatch(scene, diff);
+    if (validation.blocked) {
+      session.appendMessage("system", `Apply blocked: ${validation.messages[0] ?? "scene validation failed"}`);
+      session.setPendingDiff({
+        ...diff,
+        validation: { status: "blocked", messages: validation.messages },
+      });
+      return;
+    }
+    onSceneChange(
+      `[agent] ${diff.summary}`,
+      (s) => applyScenePatch(s, diff),
+      "agent",
+      {
+        patchId: diff.id,
+        providerId: diff.provenance?.providerId,
+        modelId: diff.provenance?.modelId,
+        operationCount: diff.operations.length,
+      },
+    );
     session.setPendingDiff(null);
     session.appendMessage("system", `Applied: ${diff.summary}`);
-  }, [session, onSceneChange]);
+  }, [scene, session, onSceneChange]);
 
   const handleReject = useCallback(() => {
     const diff = session.state.pendingDiff;
@@ -271,11 +302,16 @@ const SceneDiffBody: React.FC<BodyDeps> = ({ session, handleApply, handleReject 
   if (!diff) {
     return <p className="tx-empty">No pending diff. Ask the agent to change the scene.</p>;
   }
+  const changes = diff.changes?.length ? diff.changes : diff.operations.map(describeSceneOperation);
   return (
     <div className="scene-diff">
       <div className="scene-diff__summary">{diff.summary}</div>
+      <div className="scene-diff__summary" style={{ opacity: 0.7 }}>
+        {diff.operations.length} serialized operation{diff.operations.length === 1 ? "" : "s"}
+        {diff.validation?.status && ` · ${diff.validation.status}`}
+      </div>
       <ul className="scene-diff__changes">
-        {diff.changes.map((line, i) => (
+        {changes.map((line, i) => (
           <li
             key={i}
             className={
