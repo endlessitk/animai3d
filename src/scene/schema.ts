@@ -194,16 +194,30 @@ export type TagComponent = {
 
 export type EasingName3D = "linear" | "step" | "ease-in" | "ease-out" | "ease-in-out";
 
-export type AnimationProperty = "position" | "rotation" | "scale";
+export type LegacyAnimationProperty = "position" | "rotation" | "scale";
+
+export type AnimationPath =
+  | "transform.position"
+  | "transform.rotation"
+  | "transform.scale"
+  | "material.color"
+  | "light.intensity"
+  | "camera.fov";
+
+export type AnimatableValue = number | boolean | ColorHex | Vec3;
+
+export type AnimationProperty = AnimationPath;
 
 export type Keyframe3D = {
   frame: number;
-  value: Vec3;
+  value: AnimatableValue;
   easing: EasingName3D;
 };
 
 export type AnimationTrack = {
-  property: AnimationProperty;
+  path: AnimationPath;
+  /** Legacy compatibility for locally persisted pre-roadmap scenes. */
+  property?: LegacyAnimationProperty;
   keyframes: Keyframe3D[];
 };
 
