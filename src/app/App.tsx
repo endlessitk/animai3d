@@ -4,7 +4,7 @@ import { AgentSessionProvider } from "../agent/agentSession";
 import { AppShell } from "../ui/AppShell";
 import { defaultProject, defaultScene3D } from "../scene/defaultData3d";
 import type { Scene3D, StudioProject } from "../scene/schema";
-import type { Transaction } from "../state/transactions";
+import type { Transaction, TransactionSource } from "../state/transactions";
 import { createTransaction, resetTransactionCounter } from "../state/transactions";
 import { useUndoableScene } from "../state/useUndoable";
 import { downloadJson, loadJson, saveJson, saveJsonDebounced } from "../storage/localStore";
@@ -21,9 +21,14 @@ export const App: React.FC = () => {
   useEffect(() => saveJson("project", project), [project]);
 
   const onSceneChange = useCallback(
-    (description: string, updater: (s: Scene3D) => Scene3D) => {
+    (
+      description: string,
+      updater: (s: Scene3D) => Scene3D,
+      source: TransactionSource = "human",
+      metadata: Partial<Omit<Transaction, "id" | "description" | "timestamp" | "source">> = {},
+    ) => {
       commit(updater);
-      setTransactions((prev) => [createTransaction(description), ...prev].slice(0, 100));
+      setTransactions((prev) => [createTransaction(description, source, metadata), ...prev].slice(0, 100));
     },
     [commit],
   );
