@@ -1,12 +1,23 @@
 import type {
+  AnimatableValue,
   AnimationComponent,
-  AnimationProperty,
+  AnimationPath,
   EasingName3D,
   Keyframe3D,
+  LegacyAnimationProperty,
   Vec3,
 } from "./schema";
 
-// ── Easing ────────────────────────────────────────────────────────────────────
+const LEGACY_PATHS: Record<LegacyAnimationProperty, AnimationPath> = {
+  position: "transform.position",
+  rotation: "transform.rotation",
+  scale: "transform.scale",
+};
+
+export const normalizeAnimationPath = (
+  path: AnimationPath | LegacyAnimationProperty,
+): AnimationPath =>
+  path in LEGACY_PATHS ? LEGACY_PATHS[path as LegacyAnimationProperty] : path as AnimationPath;
 
 const ease = (t: number, name: EasingName3D): number => {
   if (t <= 0) return 0;
@@ -26,51 +37,102 @@ const ease = (t: number, name: EasingName3D): number => {
   }
 };
 
+const isVec3 = (value: AnimatableValue): value is Vec3 =>
+  Array.isArray(value) && value.length === 3;
+
+const isColor = (value: AnimatableValue): value is string =>
+  typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
+
+const lerpNumber = (a: number, b: number, t: number): number =>
+  a + (b - a) * t;
+
 const lerpVec3 = (a: Vec3, b: Vec3, t: number): Vec3 => [
-  a[0] + (b[0] - a[0]) * t,
-  a[1] + (b[1] - a[1]) * t,
-  a[2] + (b[2] - a[2]) * t,
+  lerpNumber(a[0], b[0], t),
+  lerpNumber(a[1], b[1], t),
+  lerpNumber(a[2], b[2], t),
 ];
 
-// ── Track sampling ────────────────────────────────────────────────────────────
+const hexToRgb = (hex: string): Vec3 => [
+  parseInt(hex.slice(1, 3), 16),
+  parseInt(hex.slice(3, 5), 16),
+  parseInt(hex.slice(5, 7), 16),
+];
 
-/**
- * Returns the interpolated Vec3 for `frame` against a sorted keyframe list.
- * - frame before first keyframe → first.value (clamp left)
- * - frame after last keyframe → last.value (clamp right)
- * - between two keyframes → eased lerp
- * - empty list → null (caller should fall back)
- */
-export const sampleTrack = (keyframes: Keyframe3D[], frame: number): Vec3 | null => {
+const rgbToHex = ([r, g, b]: Vec3): string => {
+  const channel = (v: number) =>
+    Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+  return `#${channel(r)}${channel(g)}${channel(b)}`;
+};
+
+const interpolateValue = (
+  a: AnimatableValue,
+  b: AnimatableValue,
+  t: number,
+): AnimatableValue => {
+  if (typeof a === "number" && typeof b === "number") return lerpNumber(a, b, t);
+  if (isVec3(a) && isVec3(b)) return lerpVec3(a, b, t);
+  if (isColor(a) && isColor(b)) return rgbToHex(lerpVec3(hexToRgb(a), hexToRgb(b), t));
+  return t < 1 ? a : b;
+};
+
+export const sampleTrack = (
+  keyframes: Keyframe3D[],
+  frame: number,
+): AnimatableValue | null => {
   if (keyframes.length === 0) return null;
-  if (frame <= keyframes[0].frame) return keyframes[0].value;
-  if (frame >= keyframes[keyframes.length - 1].frame) return keyframes[keyframes.length - 1].value;
+  const sorted = [...keyframes].sort((a, b) => a.frame - b.frame);
+  if (frame <= sorted[0].frame) return sorted[0].value;
+  if (frame >= sorted[sorted.length - 1].frame) return sorted[sorted.length - 1].value;
 
-  // Binary-friendly linear scan (lists are tiny in DCC contexts).
-  for (let i = 0; i < keyframes.length - 1; i++) {
-    const a = keyframes[i];
-    const b = keyframes[i + 1];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const a = sorted[i];
+    const b = sorted[i + 1];
     if (frame >= a.frame && frame <= b.frame) {
       const span = b.frame - a.frame;
       const t = span === 0 ? 0 : (frame - a.frame) / span;
-      return lerpVec3(a.value, b.value, ease(t, a.easing));
+      return interpolateValue(a.value, b.value, ease(t, a.easing));
     }
   }
-  return keyframes[keyframes.length - 1].value;
+  return sorted[sorted.length - 1].value;
 };
 
-// ── Component-level evaluator ────────────────────────────────────────────────
-
-export type SampledTransform = Partial<Record<AnimationProperty, Vec3>>;
+export type SampledAnimation = Partial<Record<AnimationPath, AnimatableValue>>;
 
 export const sampleAnimation = (
   anim: AnimationComponent,
   frame: number,
-): SampledTransform => {
-  const result: SampledTransform = {};
+): SampledAnimation => {
+  const result: SampledAnimation = {};
   for (const track of anim.tracks) {
-    const v = sampleTrack(track.keyframes, frame);
-    if (v) result[track.property] = v;
+    const value = sampleTrack(track.keyframes, frame);
+    if (value !== null) result[normalizeAnimationPath(track.path ?? track.property)] = value;
   }
   return result;
+};
+
+export const sampledVec3 = (
+  sampled: SampledAnimation,
+  path: AnimationPath,
+): Vec3 | undefined => {
+  const value = sampled[path];
+  if (value === undefined) return undefined;
+  return isVec3(value) ? value : undefined;
+};
+
+export const sampledNumber = (
+  sampled: SampledAnimation,
+  path: AnimationPath,
+): number | undefined => {
+  const value = sampled[path];
+  if (value === undefined) return undefined;
+  return typeof value === "number" ? value : undefined;
+};
+
+export const sampledColor = (
+  sampled: SampledAnimation,
+  path: AnimationPath,
+): string | undefined => {
+  const value = sampled[path];
+  if (value === undefined) return undefined;
+  return isColor(value) ? value : undefined;
 };
