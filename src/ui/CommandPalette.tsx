@@ -4,7 +4,7 @@ import { useAgentSession } from "../agent/agentSession";
 import { runMockAgent } from "../agent/mockAgent";
 import { addNewObject } from "../scene/sceneUtils";
 import type { AddObjectKind } from "../scene/sceneUtils";
-import type { Scene3D } from "../scene/schema";
+import type { Scene3D, StudioProject } from "../scene/schema";
 import { SHADING_OPTIONS } from "../state/studioState";
 
 // ── Modes & item shape ───────────────────────────────────────────────────────
@@ -22,7 +22,9 @@ type PaletteItem = {
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export type CommandPaletteProps = {
+  project: StudioProject;
   scene: Scene3D;
+  currentFrame: number;
   onSceneChange: (description: string, updater: (s: Scene3D) => Scene3D) => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -33,7 +35,9 @@ export type CommandPaletteProps = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
+  project,
   scene,
+  currentFrame,
   onSceneChange,
   onUndo,
   onRedo,
@@ -151,8 +155,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               studio.setAgentPanel(true);
               runMockAgent({
                 prompt: search,
+                project,
                 scene,
                 selectedId: studio.state.selectedId,
+                currentFrame,
                 appendToolCall: session.appendToolCall,
                 updateToolCall: session.updateToolCall,
                 appendAgentMessage: (text) => session.appendMessage("agent", text),
@@ -165,7 +171,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     }
     const pool = mode === "command" ? commandItems : searchItems;
     return pool.filter((it) => fuzzy(it.label, search)).slice(0, 50);
-  }, [mode, search, commandItems, searchItems, scene, session, studio]);
+  }, [mode, search, commandItems, searchItems, currentFrame, project, scene, session, studio]);
 
   // Clamp cursor when items change
   useEffect(() => {
