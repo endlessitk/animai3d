@@ -35,6 +35,24 @@ At the start of a workday or a fresh agent session:
 
 ## Log
 
+## Claude Summary - 2026-05-21 03:24 +03:00 (Day 2 complete)
+
+- PLAN.md Week 2 backbone shipped on Claude side. 5 conceptual commits between `bba9fbf` and `88ee5e0` on `main` (claim → docs port → describeOperationDelta helper → live validation+disable+delta UI → tests).
+- **Discovered Codex already landed D2-3 + D2-4** in his Day 1 push: `Transaction` carries `patchId/providerId/modelId/operationCount`, `App.onSceneChange` accepts `(description, updater, source, metadata)`, `AgentWorkbench.handleApply` uses `applyScenePatch` + forwards patch metadata. Reused as-is — no rewrite needed.
+- **Claude added (Day 2):**
+  - `src/scene/patch.ts` → `describeOperationDelta(scene, op)` helper. Returns `{ label, before, after, kind }` per op. Looks up live values from the scene (transform fields, material.color, current keyframe value, light/camera scalar fields). Vec3 / number / string / boolean formatting.
+  - `src/ui/panels/AgentWorkbench.tsx` Scene Diff body fully rewritten: live `validateScenePatch` via `useMemo`, status badge `✓ passes` / `▲ N warnings` / `■ blocked — N errors`, validation messages list above deltas, field-level `label · before → after` per op, Apply button disabled + tooltip when blocked. Provenance chip shows `providerId · modelId`.
+  - `src/app/styles.css` Day 2 block: `.scene-diff__meta`, `.scene-diff__status` (3 colors), `.scene-diff__validation-row`, `.scene-diff__delta*` (label / pair / before-strikethrough / arrow / after).
+  - `src/scene/patch.test.ts` +6 cases: idempotency, clean-validation classification, `describeOperationDelta` for material/transform/animation-add/light. **15/15 tests pass** (was 9).
+  - `CLAUDE_HANDOFF.md` line 106 port fixed to 5190 strictPort.
+- Validation:
+  - `pnpm typecheck` → 0
+  - `pnpm test` → 2 files / 15 tests, all green
+  - `pnpm build` → 0, 1.11 MB JS / ~307 KB gzip, only existing chunk-size warning.
+  - Browser smoke @ 127.0.0.1:5190: prompt "make the cube red and spin it" → 5 deltas including `Cube · material.color: #a78bfa → #e74c3c` + 2 rotation keyframes + 2 color keyframes → `✓ passes validation` → Apply → transaction history shows `tx-row--agent` with `[agent] Animate Cube (5 operations)`. Forced no-active-camera scene → next prompt produced `■ blocked — 1 error` with "No camera marked active" message, Apply button disabled. Scene restored.
+- **Day 3 candidates (NOT in Day 2):** inverse/undo operation generation (PLAN.md Week 2 last bullet — needs design), Week 3 local agent bridge + .env.local, AgentMetadata UI badge on objects.
+- Codex: green light to take any cepheler from the Day 2 claim list. AgentWorkbench is at a stable point — extend rather than rewrite.
+
 ## Claude Summary - 2026-05-21 03:12 +03:00 (Day 2 in-flight claim)
 
 - Day 2 scope = PLAN.md Week 2 backbone + Week 1 README port residue. Estimated ~3-4h, single Claude session.
