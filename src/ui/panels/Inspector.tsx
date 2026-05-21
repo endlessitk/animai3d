@@ -3,7 +3,8 @@ import { useStudioState } from "../../state/studioState";
 import type {
   AgentMetadataComponent,
   AnimationComponent,
-  AnimationProperty,
+  AnimationPath,
+  AnimatableValue,
   CameraComponent,
   Component,
   ComponentType,
@@ -221,7 +222,7 @@ const KeyframeButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
 const TransformBody: React.FC<{
   comp: TransformComponent;
   onUpdate: (next: TransformComponent) => void;
-  onKeyframe?: (property: AnimationProperty, value: Vec3) => void;
+  onKeyframe?: (path: AnimationPath, value: Vec3) => void;
 }> = ({ comp, onUpdate, onKeyframe }) => (
   <div className="component-body">
     <FieldRow label="Position">
@@ -231,7 +232,7 @@ const TransformBody: React.FC<{
         precision={3}
         onChange={(v) => onUpdate({ ...comp, transform: { ...comp.transform, position: v } })}
       />
-      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("position", comp.transform.position)} />}
+      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("transform.position", comp.transform.position)} />}
     </FieldRow>
     <FieldRow label="Rotation">
       <Vec3Field
@@ -241,7 +242,7 @@ const TransformBody: React.FC<{
         unit="rad"
         onChange={(v) => onUpdate({ ...comp, transform: { ...comp.transform, rotation: v } })}
       />
-      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("rotation", comp.transform.rotation)} />}
+      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("transform.rotation", comp.transform.rotation)} />}
     </FieldRow>
     <FieldRow label="Scale">
       <Vec3Field
@@ -250,15 +251,18 @@ const TransformBody: React.FC<{
         precision={3}
         onChange={(v) => onUpdate({ ...comp, transform: { ...comp.transform, scale: v } })}
       />
-      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("scale", comp.transform.scale)} />}
+      {onKeyframe && <KeyframeButton onClick={() => onKeyframe("transform.scale", comp.transform.scale)} />}
     </FieldRow>
   </div>
 );
 
 const AnimationBody: React.FC<{
   comp: AnimationComponent;
-  onRemoveKey: (property: AnimationProperty, frame: number) => void;
+  onRemoveKey: (path: AnimationPath, frame: number) => void;
 }> = ({ comp, onRemoveKey }) => {
+  const formatValue = (value: AnimatableValue): string =>
+    Array.isArray(value) ? value.map((v) => v.toFixed(2)).join(", ") : String(value);
+
   if (comp.tracks.length === 0) {
     return (
       <div className="component-body">
@@ -268,10 +272,12 @@ const AnimationBody: React.FC<{
   }
   return (
     <div className="component-body anim-body">
-      {comp.tracks.map((track) => (
-        <div key={track.property} className="anim-track">
+      {comp.tracks.map((track) => {
+        const path = track.path ?? (`transform.${track.property}` as AnimationPath);
+        return (
+        <div key={path} className="anim-track">
           <div className="anim-track__header">
-            <span className="anim-track__name">{track.property}</span>
+            <span className="anim-track__name">{path}</span>
             <span className="anim-track__count">{track.keyframes.length} keys</span>
           </div>
           <div className="anim-track__keys">
@@ -280,13 +286,13 @@ const AnimationBody: React.FC<{
                 key={k.frame}
                 type="button"
                 className="anim-key"
-                title={`Frame ${k.frame} · ${k.value.map((v) => v.toFixed(2)).join(", ")} · click to delete`}
-                onClick={() => onRemoveKey(track.property, k.frame)}
+                title={`Frame ${k.frame} · ${formatValue(k.value)} · click to delete`}
+                onClick={() => onRemoveKey(path, k.frame)}
               >◆ f{k.frame}</button>
             ))}
           </div>
         </div>
-      ))}
+      );})}
     </div>
   );
 };
@@ -511,8 +517,8 @@ type ComponentCardProps = {
   objectId: string;
   onUpdate: (next: Component) => void;
   onRemove: () => void;
-  onKeyframe?: (property: AnimationProperty, value: Vec3) => void;
-  onRemoveKey?: (property: AnimationProperty, frame: number) => void;
+  onKeyframe?: (path: AnimationPath, value: Vec3) => void;
+  onRemoveKey?: (path: AnimationPath, frame: number) => void;
 };
 
 const ComponentCard: React.FC<ComponentCardProps> = ({
@@ -676,19 +682,19 @@ export const Inspector: React.FC<InspectorProps> = ({
     );
   };
 
-  const handleKeyframe = (property: AnimationProperty, value: Vec3) => {
+  const handleKeyframe = (path: AnimationPath, value: Vec3) => {
     if (!selected) return;
     onSceneChange(
-      `Keyframe ${property} @ f${currentFrame}`,
-      (s) => setKeyframe(s, selected.id, property, currentFrame, value),
+      `Keyframe ${path} @ f${currentFrame}`,
+      (s) => setKeyframe(s, selected.id, path, currentFrame, value),
     );
   };
 
-  const handleRemoveKey = (property: AnimationProperty, frame: number) => {
+  const handleRemoveKey = (path: AnimationPath, frame: number) => {
     if (!selected) return;
     onSceneChange(
-      `Remove key ${property} @ f${frame}`,
-      (s) => removeKeyframe(s, selected.id, property, frame),
+      `Remove key ${path} @ f${frame}`,
+      (s) => removeKeyframe(s, selected.id, path, frame),
     );
   };
 
