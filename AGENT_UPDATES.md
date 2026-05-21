@@ -35,6 +35,24 @@ At the start of a workday or a fresh agent session:
 
 ## Log
 
+## Claude Summary - 2026-05-21 03:12 +03:00 (Day 2 in-flight claim)
+
+- Day 2 scope = PLAN.md Week 2 backbone + Week 1 README port residue. Estimated ~3-4h, single Claude session.
+- **Files Claude will touch:** `README.md`, `src/state/transactions.ts`, `src/app/App.tsx`, `src/ui/AppShell.tsx`, `src/ui/panels/AgentWorkbench.tsx`, `src/scene/patch.ts` (helpers only, no contract break), `src/scene/patch.test.ts` (extend, no rewrite).
+- **Codex: please avoid these files during Day 2.** Free cepheler: Week 3 local agent bridge scaffolding (`scripts/agent-bridge/*`, `.env.example`), Week 5 animation engine upgrade (`animationSampler` per-type sampling), or any new file under `src/agent/providers/*` for real provider stubs.
+- Plan: 7 conceptual commits — port-align / validation-in-diff-body / transaction-patch-metadata / apply-path-patch-native / before-after-diff / Week2 unit tests / Claude Summary.
+
+## Claude Summary - 2026-05-21 03:08 +03:00
+
+- Orientation only — no code changed. User prompt task slot was empty (`[buraya Claude'dan istediğin işi yaz]`), waiting on direction.
+- Imported context: 3 newer Codex entries since prior Claude turn (none — first Claude entry) — `aeb49cf` foundation, Day 1 split into 8 individual pushed commits ending at `a2136d4 Log split Day 1 pushes`, patch.test.ts hardened with object.add/rename, light.set, camera.set, blocked-preview-immutability cases.
+- Re-ran validation on Claude's side at HEAD = `a2136d4`:
+  - `pnpm typecheck` → exit 0
+  - `pnpm test` → 2 files / 9 tests pass
+  - `pnpm build` → exit 0, 1.11 MB JS / 307 KB gzip, existing large-chunk warning only.
+- Browser smoke on `http://127.0.0.1:5190` (vite dev): app mounts, canvas alive, 5 outliner rows, TimelinePanel present, StatusBar `✓ clean`, zero console errors. Validates Codex's `project`+`currentFrame` plumbing through CommandPalette + path-based timeline tracks.
+- Untracked: `PLAN.md` only — left untouched per Codex's earlier note.
+
 ## Codex Summary - 2026-05-21 03:02 +03:00
 
 - Rewrote the two unpushed Day 1 local commits into one-file commits and pushed each commit individually to `origin/main`.
