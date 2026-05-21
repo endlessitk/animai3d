@@ -1,14 +1,16 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { SceneRenderer3D } from "../scene/SceneRenderer3D";
 import type { GizmoMode } from "../scene/SceneRenderer3D";
 import { useViewport3DRuntime } from "../engine/runtime/Viewport3DRuntime";
 import type { Component, Scene3D, StudioProject, Transform3D } from "../scene/schema";
-import type { Transaction } from "../state/transactions";
+import { applyScenePatch } from "../scene/patch";
+import type { Transaction, TransactionSource } from "../state/transactions";
 import { addComponent, addNewObject, setObjectTransform } from "../scene/sceneUtils";
 import type { AddObjectKind } from "../scene/sceneUtils";
 import { useStudioState } from "../state/studioState";
 import type { ToolId } from "../state/studioState";
 import { useGlobalHotkeys } from "../state/useGlobalHotkeys";
+import { useAgentSession } from "../agent/agentSession";
 import { AppBar } from "./chrome/AppBar";
 import { WorkspaceSwitcher } from "./chrome/WorkspaceSwitcher";
 import { Toolbar } from "./chrome/Toolbar";
@@ -48,7 +50,12 @@ export type AppShellProps = {
   transactions: Transaction[];
   canUndo: boolean;
   canRedo: boolean;
-  onSceneChange: (description: string, updater: (s: Scene3D) => Scene3D) => void;
+  onSceneChange: (
+    description: string,
+    updater: (s: Scene3D) => Scene3D,
+    source?: TransactionSource,
+    metadata?: Partial<Omit<Transaction, "id" | "description" | "timestamp" | "source">>,
+  ) => void;
   onUndo: () => void;
   onRedo: () => void;
   onResetScene: () => void;
@@ -68,8 +75,15 @@ export const AppShell: React.FC<AppShellProps> = ({
   onExportScene,
 }) => {
   const studio = useStudioState();
+  const agentSession = useAgentSession();
   const runtime = useViewport3DRuntime(project, scene);
   const frame = Math.round(runtime.state.frame);
+  const viewportScene = useMemo(
+    () => agentSession.state.pendingDiff
+      ? applyScenePatch(scene, agentSession.state.pendingDiff)
+      : scene,
+    [agentSession.state.pendingDiff, scene],
+  );
 
   const [addComponentOpen, setAddComponentOpen] = useState(false);
   const [addObjectOpen, setAddObjectOpen] = useState(false);
@@ -158,7 +172,7 @@ export const AppShell: React.FC<AppShellProps> = ({
       <div className="viewport-area">
         <div className="viewport-canvas">
           <SceneRenderer3D
-            scene={scene}
+            scene={viewportScene}
             selectedId={studio.state.selectedId}
             selectedIds={studio.state.selectedIds}
             gizmoMode={gizmoMode}
@@ -170,6 +184,11 @@ export const AppShell: React.FC<AppShellProps> = ({
             onSelect={handleViewportSelect}
             onTransformCommit={handleTransformCommit}
           />
+          {agentSession.state.pendingDiff && (
+            <div className="viewport-overlay viewport-overlay--preview">
+              pending patch preview
+            </div>
+          )}
           <div className="viewport-overlay viewport-overlay--tl">
             <span>View</span>
             <span className="dim">▾</span>
@@ -237,7 +256,9 @@ export const AppShell: React.FC<AppShellProps> = ({
       </div>
 
       <AgentWorkbench
+        project={project}
         scene={scene}
+        currentFrame={frame}
         transactions={transactions}
         onSceneChange={onSceneChange}
       />
@@ -254,7 +275,9 @@ export const AppShell: React.FC<AppShellProps> = ({
       />
 
       <CommandPalette
+        project={project}
         scene={scene}
+        currentFrame={frame}
         onSceneChange={onSceneChange}
         onUndo={onUndo}
         onRedo={onRedo}
