@@ -61,7 +61,10 @@ export const TimelinePanel: React.FC<TimelinePanelProps> = ({
   };
 
   const tracks: Array<{ property: string; frames: number[] }> = anim
-    ? anim.tracks.map((t) => ({ property: t.property, frames: t.keyframes.map((k) => k.frame) }))
+    ? anim.tracks.map((t) => ({
+        property: t.path ?? `transform.${t.property}`,
+        frames: t.keyframes.map((k) => k.frame),
+      }))
     : [];
 
   return (
