@@ -1996,9 +1996,120 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--accent-active);
   color: #000;
 }
-.scene-diff__btn--apply:hover {
+.scene-diff__btn--apply:hover:not(:disabled) {
   background: var(--accent-active);
   filter: brightness(1.1);
+}
+.scene-diff__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Day 2 — Scene Diff field-level + validation ─────────────────── */
+
+.scene-diff__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-panel);
+}
+.scene-diff__opcount,
+.scene-diff__provenance {
+  color: var(--text-muted);
+}
+.scene-diff__status {
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid var(--border-panel);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.scene-diff__status.is-passed {
+  color: var(--accent-success, #7ab841);
+  border-color: var(--accent-success, #7ab841);
+}
+.scene-diff__status.is-warning {
+  color: var(--accent-warning, #f0a500);
+  border-color: var(--accent-warning, #f0a500);
+}
+.scene-diff__status.is-blocked {
+  color: var(--accent-error, #e74c3c);
+  border-color: var(--accent-error, #e74c3c);
+}
+
+.scene-diff__validation {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.scene-diff__validation-row {
+  padding: 3px 6px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: var(--bg-panel-2);
+}
+.scene-diff__validation-row.is-warning {
+  color: var(--accent-warning, #f0a500);
+  border-left: 2px solid var(--accent-warning, #f0a500);
+}
+.scene-diff__validation-row.is-blocked {
+  color: var(--accent-error, #e74c3c);
+  border-left: 2px solid var(--accent-error, #e74c3c);
+}
+
+.scene-diff__deltas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.scene-diff__delta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: 3px 6px;
+  background: var(--bg-panel-2);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+.scene-diff__delta-label {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scene-diff__delta-pair {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+  color: var(--text-primary);
+}
+.scene-diff__delta-before {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.scene-diff__delta-arrow {
+  color: var(--text-muted);
+}
+.scene-diff__delta-after {
+  color: var(--accent-active);
+}
+.scene-diff__delta--add .scene-diff__delta-after {
+  color: var(--accent-success, #7ab841);
+}
+.scene-diff__delta--del .scene-diff__delta-after {
+  color: var(--accent-error, #e74c3c);
 }
 
 /* ── Sprint 9 — Validation panel + Content Browser cards ─────────── */

@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useStudioState } from "../../state/studioState";
 import { useAgentSession } from "../../agent/agentSession";
 import { runMockAgent } from "../../agent/mockAgent";
-import { applyScenePatch, describeSceneOperation, validateScenePatch } from "../../scene/patch";
+import {
+  applyScenePatch,
+  describeOperationDelta,
+  validateScenePatch,
+} from "../../scene/patch";
 import type { Scene3D, StudioProject } from "../../scene/schema";
 import type { Transaction, TransactionSource } from "../../state/transactions";
 
@@ -169,6 +173,7 @@ export const AgentWorkbench: React.FC<AgentWorkbenchProps> = ({
                 <div className="agent-accordion__body">
                   {renderAccordionBody(acc.id, {
                     session,
+                    scene,
                     transactions,
                     input,
                     setInput,
@@ -191,6 +196,7 @@ export const AgentWorkbench: React.FC<AgentWorkbenchProps> = ({
 
 type BodyDeps = {
   session: ReturnType<typeof useAgentSession>;
+  scene: Scene3D;
   transactions: Transaction[];
   input: string;
   setInput: (s: string) => void;
@@ -297,38 +303,81 @@ const ToolLogBody: React.FC<{ session: ReturnType<typeof useAgentSession> }> = (
 
 // ── Scene diff ────────────────────────────────────────────────────────────────
 
-const SceneDiffBody: React.FC<BodyDeps> = ({ session, handleApply, handleReject }) => {
+const SceneDiffBody: React.FC<BodyDeps> = ({ scene, session, handleApply, handleReject }) => {
   const diff = session.state.pendingDiff;
+
+  // Live validation — recomputed against current scene + patch identity.
+  const validation = React.useMemo(
+    () => (diff ? validateScenePatch(scene, diff) : null),
+    [scene, diff],
+  );
+  const deltas = React.useMemo(
+    () => (diff ? diff.operations.map((op) => describeOperationDelta(scene, op)) : []),
+    [scene, diff],
+  );
+
   if (!diff) {
     return <p className="tx-empty">No pending diff. Ask the agent to change the scene.</p>;
   }
-  const changes = diff.changes?.length ? diff.changes : diff.operations.map(describeSceneOperation);
+
+  const status: "passed" | "warning" | "blocked" = validation?.blocked
+    ? "blocked"
+    : (validation && validation.messages.length > 0)
+      ? "warning"
+      : "passed";
+  const statusLabel: Record<typeof status, string> = {
+    passed: "✓ passes validation",
+    warning: `▲ ${validation?.messages.length ?? 0} warning${(validation?.messages.length ?? 0) === 1 ? "" : "s"}`,
+    blocked: `■ blocked — ${validation?.messages.length ?? 0} error${(validation?.messages.length ?? 0) === 1 ? "" : "s"}`,
+  };
+
   return (
     <div className="scene-diff">
       <div className="scene-diff__summary">{diff.summary}</div>
-      <div className="scene-diff__summary" style={{ opacity: 0.7 }}>
-        {diff.operations.length} serialized operation{diff.operations.length === 1 ? "" : "s"}
-        {diff.validation?.status && ` · ${diff.validation.status}`}
+      <div className="scene-diff__meta">
+        <span className="scene-diff__opcount">
+          {diff.operations.length} op{diff.operations.length === 1 ? "" : "s"}
+        </span>
+        {diff.provenance?.providerId && (
+          <span className="scene-diff__provenance">
+            {diff.provenance.providerId}{diff.provenance.modelId ? ` · ${diff.provenance.modelId}` : ""}
+          </span>
+        )}
+        <span className={`scene-diff__status is-${status}`}>{statusLabel[status]}</span>
       </div>
-      <ul className="scene-diff__changes">
-        {changes.map((line, i) => (
-          <li
-            key={i}
-            className={
-              line.startsWith("+")
-                ? "scene-diff__line scene-diff__line--add"
-                : line.startsWith("-")
-                  ? "scene-diff__line scene-diff__line--del"
-                  : "scene-diff__line scene-diff__line--mod"
-            }
-          >{line}</li>
+
+      {validation && validation.messages.length > 0 && (
+        <ul className="scene-diff__validation">
+          {validation.messages.map((m, i) => (
+            <li key={i} className={`scene-diff__validation-row is-${status}`}>{m}</li>
+          ))}
+        </ul>
+      )}
+
+      <ul className="scene-diff__deltas">
+        {deltas.map((d, i) => (
+          <li key={i} className={`scene-diff__delta scene-diff__delta--${d.kind}`}>
+            <span className="scene-diff__delta-label">{d.label}</span>
+            <span className="scene-diff__delta-pair">
+              <span className="scene-diff__delta-before">{d.before}</span>
+              <span className="scene-diff__delta-arrow">→</span>
+              <span className="scene-diff__delta-after">{d.after}</span>
+            </span>
+          </li>
         ))}
       </ul>
+
       <div className="scene-diff__actions">
         <button type="button" className="scene-diff__btn scene-diff__btn--reject" onClick={handleReject}>
           Reject
         </button>
-        <button type="button" className="scene-diff__btn scene-diff__btn--apply" onClick={handleApply}>
+        <button
+          type="button"
+          className="scene-diff__btn scene-diff__btn--apply"
+          onClick={handleApply}
+          disabled={status === "blocked"}
+          title={status === "blocked" ? "Validation errors must be resolved before applying" : "Commit patch to scene"}
+        >
           Apply
         </button>
       </div>
