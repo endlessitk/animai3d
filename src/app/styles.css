@@ -546,6 +546,13 @@ input:focus, select:focus, textarea:focus {
 .viewport-overlay--tr { top: var(--space-3); right: var(--space-3); }
 .viewport-overlay--bl { bottom: var(--space-3); left: var(--space-3); }
 .viewport-overlay--br { bottom: var(--space-3); right: var(--space-3); }
+.viewport-overlay--preview {
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--text-agent);
+  border-left: 2px solid var(--accent-agent);
+}
 .viewport-overlay .dim { color: var(--text-secondary); }
 
 /* Transport bar — viewport row footer */
@@ -2390,4 +2397,3 @@ input:focus, select:focus, textarea:focus {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-
