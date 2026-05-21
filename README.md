@@ -11,6 +11,8 @@ This repository is powered by Vite, React, TypeScript, Three.js, `@react-three/f
 - Outliner and inspector panels backed by a component-based `Scene3D` schema
 - Timeline and transport controls for frame-based playback and seeking
 - Agent Workbench with chat, tool-call log, pending scene diff review, and transaction history
+- Provider-agnostic agent contracts with serializable scene patches and operation replay
+- Path-based animation tracks for transform, material color, light intensity, and camera fields
 - Local persistence for project and scene data through browser storage
 - JSON export for the active 3D scene
 - Legacy Remotion adapter kept in the repo for optional render experiments
@@ -78,7 +80,7 @@ pnpm install
 pnpm dev
 ```
 
-The app runs on [http://127.0.0.1:5173](http://127.0.0.1:5173).
+The app runs on [http://127.0.0.1:5190](http://127.0.0.1:5190).
 
 ### Build
 
@@ -96,10 +98,13 @@ pnpm typecheck
 
 ```bash
 pnpm task:new "make the camera orbit the hero object"
+pnpm agent:bridge
 pnpm legacy:remotion:studio
 pnpm legacy:remotion:render
 pnpm legacy:remotion:still
 ```
+
+`pnpm agent:bridge` starts the local bridge stub on `http://127.0.0.1:8787`. The bridge reads `.env.local` using the shape shown in `.env.example`; the app currently uses the in-app mock provider while the OpenAI-compatible adapter is being wired.
 
 ## Interaction model
 
@@ -110,6 +115,7 @@ The studio is designed around familiar DCC conventions:
 - `F12` for the Agent Workbench
 - scene edits flow through transactions so they can be reviewed and undone
 - agent changes are intended to be inspectable instead of silently mutating the scene
+- pending agent patches are previewed in the viewport before Apply or Reject
 
 ## Current status
 
