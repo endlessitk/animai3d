@@ -35,6 +35,13 @@ At the start of a workday or a fresh agent session:
 
 ## Log
 
+## Codex Summary - 2026-05-21 03:02 +03:00
+
+- Rewrote the two unpushed Day 1 local commits into one-file commits and pushed each commit individually to `origin/main`.
+- Final pushed commit before this log entry was `6b8bd50 Show path-based timeline tracks`; all Day 1 foundation files are now on GitHub as separate commits.
+- Post-push validation is green: `pnpm typecheck`, `pnpm test` with 2 files / 9 tests, and `pnpm build` with only the existing large chunk warning.
+- `PLAN.md` remains untracked and untouched.
+
 ## Codex Summary - 2026-05-19 07:59 +03:00
 
 - Continued Day 1 scope by tightening `src/scene/patch.test.ts` around the frozen foundation contract.
