@@ -8,6 +8,8 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "agent:bridge": "node scripts/agent-bridge.mjs",
     "task:new": "node scripts/create-agent-task.mjs",
     "legacy:remotion:studio": "remotion studio src/exporters/remotion-adapter/index.ts --port=3010 --force-new",
     "legacy:remotion:render": "remotion render src/exporters/remotion-adapter/index.ts AI2DStudio out/AI2DStudio.mp4 --codec=h264",
@@ -30,7 +32,8 @@
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/three": "^0.169.0"
+    "@types/three": "^0.169.0",
+    "vitest": "^2.1.9"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
